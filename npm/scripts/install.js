@@ -26,6 +26,9 @@ function getArchiveName() {
 }
 
 const MAX_REDIRECTS = 5;
+const HTTP_STATUS_OK = 200;
+const HTTP_STATUS_REDIRECT_MIN = 300;
+const HTTP_STATUS_REDIRECT_MAX = 399;
 
 function download(url, redirectCount = 0) {
   return new Promise((resolve, reject) => {
@@ -38,14 +41,14 @@ function download(url, redirectCount = 0) {
       .get(url, (response) => {
         // Follow redirects (GitHub releases redirect to S3)
         if (
-          response.statusCode >= 300 &&
-          response.statusCode < 400 &&
+          response.statusCode >= HTTP_STATUS_REDIRECT_MIN &&
+          response.statusCode <= HTTP_STATUS_REDIRECT_MAX &&
           response.headers.location
         ) {
           return download(response.headers.location, redirectCount + 1).then(resolve, reject);
         }
 
-        if (response.statusCode !== 200) {
+        if (response.statusCode !== HTTP_STATUS_OK) {
           reject(
             new Error(
               `Download failed with status ${response.statusCode}: ${url}`
