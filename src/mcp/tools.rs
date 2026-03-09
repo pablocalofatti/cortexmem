@@ -329,7 +329,7 @@ impl CortexMemServer {
         match self.call_get_multiple(&ids) {
             Ok(observations) => {
                 // Track access and record search feedback for each
-                let last_query = self.last_search_query.lock().unwrap().clone();
+                let last_query = self.last_search_query.lock().unwrap().take();
                 let session_id = *self.current_session.lock().unwrap();
                 for obs in &observations {
                     let _ = self.track_access(obs.id);

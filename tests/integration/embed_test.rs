@@ -51,7 +51,9 @@ fn should_reject_unknown_model_name() {
 #[test]
 #[ignore]
 fn should_generate_embedding_with_correct_dimensions() {
-    let manager = EmbeddingManager::new_with_download("$TMPDIR/cortexmem-test-models").unwrap();
+    let manager =
+        EmbeddingManager::new_with_download("$TMPDIR/cortexmem-test-models", "AllMiniLML6V2")
+            .unwrap();
     let embedding = manager.embed("authentication middleware").unwrap();
     assert_eq!(embedding.len(), 384);
 }

@@ -49,13 +49,13 @@ impl EmbeddingManager {
         &self.model_name
     }
 
-    pub fn new_with_download(cache_dir: impl Into<PathBuf>) -> Result<Self> {
+    pub fn new_with_download(cache_dir: impl Into<PathBuf>, model_name: &str) -> Result<Self> {
         let cache_dir = cache_dir.into();
-        let model = Self::load_model_for(&cache_dir, "AllMiniLML6V2")?;
+        let model = Self::load_model_for(&cache_dir, model_name)?;
         Ok(Self {
             cache_dir,
             model: Mutex::new(Some(model)),
-            model_name: "AllMiniLML6V2".to_string(),
+            model_name: model_name.to_string(),
         })
     }
 

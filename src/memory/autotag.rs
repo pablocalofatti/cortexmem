@@ -1,10 +1,13 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
 
 const MAX_CONCEPTS: usize = 8;
 const MIN_WORD_LENGTH: usize = 3;
+const MIN_FACT_LENGTH: usize = 20;
+pub const DEFAULT_KEYWORD_LIMIT: usize = 6;
 
 /// Common English stop words to exclude from keyword extraction.
-fn stop_words() -> HashSet<&'static str> {
+static STOP_WORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     [
         "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
         "from", "as", "is", "was", "are", "were", "be", "been", "being", "have", "has", "had",
@@ -19,7 +22,7 @@ fn stop_words() -> HashSet<&'static str> {
     ]
     .into_iter()
     .collect()
-}
+});
 
 /// Simple suffix stemmer — reduces common English suffixes.
 fn stem(word: &str) -> String {
@@ -30,17 +33,19 @@ fn stem(word: &str) -> String {
     for suffix in &[
         "tion", "sion", "ment", "ness", "ance", "ence", "ible", "able", "ious", "eous",
     ] {
-        if w.ends_with(suffix) {
-            return w[..w.len() - suffix.len()].to_string();
+        if let Some(stripped) = w.strip_suffix(suffix) {
+            return stripped.to_string();
         }
     }
     for suffix in &["ing", "ted", "ied", "ies", "ers", "est"] {
-        if w.ends_with(suffix) {
-            return w[..w.len() - suffix.len()].to_string();
+        if let Some(stripped) = w.strip_suffix(suffix) {
+            return stripped.to_string();
         }
     }
-    if w.ends_with("ed") && w.len() > 4 {
-        return w[..w.len() - 2].to_string();
+    if let Some(stripped) = w.strip_suffix("ed")
+        && stripped.len() > 2
+    {
+        return stripped.to_string();
     }
     if w.ends_with('s') && !w.ends_with("ss") && w.len() > 4 {
         return w[..w.len() - 1].to_string();
@@ -62,7 +67,6 @@ pub fn extract_keywords(text: &str, limit: usize) -> Vec<String> {
         return vec![];
     }
 
-    let stops = stop_words();
     let tokens = tokenize(text);
     if tokens.is_empty() {
         return vec![];
@@ -71,11 +75,11 @@ pub fn extract_keywords(text: &str, limit: usize) -> Vec<String> {
     // Count term frequency using stemmed forms
     let mut tf: HashMap<String, (usize, String)> = HashMap::new(); // stem -> (count, original)
     for token in &tokens {
-        if stops.contains(token.as_str()) {
+        if STOP_WORDS.contains(token.as_str()) {
             continue;
         }
         let stemmed = stem(token);
-        if stops.contains(stemmed.as_str()) {
+        if STOP_WORDS.contains(stemmed.as_str()) {
             continue;
         }
         let entry = tf.entry(stemmed).or_insert((0, token.clone()));
@@ -99,11 +103,10 @@ pub fn extract_keywords(text: &str, limit: usize) -> Vec<String> {
 /// Extract declarative sentences as candidate facts.
 /// Picks sentences that look like statements (not questions, not too short).
 pub fn extract_facts(text: &str, limit: usize) -> Vec<String> {
-    let min_fact_length = 20;
     text.split('.')
         .map(|s| s.trim().to_string())
         .filter(|s| {
-            s.len() >= min_fact_length
+            s.len() >= MIN_FACT_LENGTH
                 && !s.ends_with('?')
                 && !s.starts_with("TODO")
                 && !s.starts_with("FIXME")

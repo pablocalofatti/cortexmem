@@ -90,7 +90,7 @@ impl MemoryManager {
 
         if obs.concepts.is_none() || obs.concepts.as_ref().is_some_and(|c| c.is_empty()) {
             let text = format!("{} {}", obs.title, obs.content);
-            let keywords = autotag::extract_keywords(&text, 6);
+            let keywords = autotag::extract_keywords(&text, autotag::DEFAULT_KEYWORD_LIMIT);
             if !keywords.is_empty() {
                 obs.concepts = Some(keywords);
             }

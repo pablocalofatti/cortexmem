@@ -277,7 +277,10 @@ async fn main() -> anyhow::Result<()> {
             for id in &ids {
                 if let Ok(Some(obs)) = db.get_observation(*id) {
                     let text = format!("{} {}", obs.title, obs.content);
-                    let keywords = cortexmem::memory::autotag::extract_keywords(&text, 6);
+                    let keywords = cortexmem::memory::autotag::extract_keywords(
+                        &text,
+                        cortexmem::memory::autotag::DEFAULT_KEYWORD_LIMIT,
+                    );
                     let facts = cortexmem::memory::autotag::extract_facts(&obs.content, 3);
 
                     let concepts_update = if keywords.is_empty() {

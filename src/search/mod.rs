@@ -146,12 +146,15 @@ impl<'a> HybridSearcher<'a> {
     }
 }
 
+const ACCESS_BOOST_PER_HIT: f64 = 0.1;
+const ACCESS_BOOST_CAP: f64 = 2.0;
 const FEEDBACK_BOOST_PER_HIT: f64 = 0.1;
 const FEEDBACK_BOOST_CAP: f64 = 2.0;
+const RECENCY_DECAY_RATE: f64 = 0.01;
 
 fn apply_boosts(rrf_score: f64, updated_at: &str, access_count: i64, feedback_count: i64) -> f64 {
     let recency_factor = compute_recency_factor(updated_at);
-    let access_factor = 1.0 + 0.1 * access_count as f64;
+    let access_factor = (1.0 + ACCESS_BOOST_PER_HIT * access_count as f64).min(ACCESS_BOOST_CAP);
     let feedback_factor =
         (1.0 + FEEDBACK_BOOST_PER_HIT * feedback_count as f64).min(FEEDBACK_BOOST_CAP);
     rrf_score * recency_factor * access_factor * feedback_factor
@@ -164,5 +167,5 @@ fn compute_recency_factor(updated_at: &str) -> f64 {
 
     let now = chrono::Utc::now().naive_utc();
     let days_since = (now - updated).num_days().max(0) as f64;
-    1.0 / (1.0 + days_since * 0.01)
+    1.0 / (1.0 + days_since * RECENCY_DECAY_RATE)
 }
