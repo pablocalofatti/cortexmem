@@ -1,0 +1,88 @@
+[package]
+name = "cortexmem"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Persistent vector memory for AI coding agents"
+repository = "https://github.com/pablocalofatti/cortexmem"
+readme = "README.md"
+keywords = ["memory", "vector-search", "mcp", "ai-agents", "embeddings"]
+categories = ["command-line-utilities", "database"]
+
+[dependencies]
+rmcp = { version = "1.1", features = ["server", "transport-io"] }
+rusqlite = { version = "0.38", features = ["bundled", "vtab"] }
+sqlite-vec = "0.1"
+fastembed = "5.12"
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "6"
+
+[dev-dependencies]
+tempfile = "3"
+
+[[test]]
+name = "db_test"
+path = "tests/integration/db_test.rs"
+
+[[test]]
+name = "observations_test"
+path = "tests/integration/observations_test.rs"
+
+[[test]]
+name = "sessions_test"
+path = "tests/integration/sessions_test.rs"
+
+[[test]]
+name = "fts_test"
+path = "tests/integration/fts_test.rs"
+
+[[test]]
+name = "embed_test"
+path = "tests/integration/embed_test.rs"
+
+[[test]]
+name = "vector_test"
+path = "tests/integration/vector_test.rs"
+
+[[test]]
+name = "search_test"
+path = "tests/integration/search_test.rs"
+
+[[test]]
+name = "dedup_test"
+path = "tests/integration/dedup_test.rs"
+
+[[test]]
+name = "lifecycle_test"
+path = "tests/integration/lifecycle_test.rs"
+
+[[test]]
+name = "mcp_test"
+path = "tests/integration/mcp_test.rs"
+
+[[test]]
+name = "mcp_write_test"
+path = "tests/integration/mcp_write_test.rs"
+
+[[test]]
+name = "mcp_read_test"
+path = "tests/integration/mcp_read_test.rs"
+
+[[test]]
+name = "mcp_lifecycle_test"
+path = "tests/integration/mcp_lifecycle_test.rs"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
