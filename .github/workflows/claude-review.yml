@@ -1,0 +1,42 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request' &&
+       !contains(github.event.pull_request.labels.*.name, 'minion-managed') &&
+       github.event.pull_request.user.login != 'github-actions[bot]') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          custom_instructions: |
+            You are a senior Rust engineer. Focus on:
+            1. Code quality, readability, and idiomatic Rust patterns
+            2. Potential bugs, logic errors, or undefined behavior
+            3. Security vulnerabilities (SQL injection, input validation)
+            4. Error handling (proper use of Result, no silent failures)
+            5. Performance (unnecessary allocations, missing &str params)
+            Be concise and actionable. Only comment on real issues.

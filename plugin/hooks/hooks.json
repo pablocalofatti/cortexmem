@@ -1,0 +1,14 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "command": "plugin/scripts/session-start.sh",
+      "timeout": 5000
+    },
+    {
+      "event": "Stop",
+      "command": "plugin/scripts/session-end.sh",
+      "timeout": 5000
+    }
+  ]
+}

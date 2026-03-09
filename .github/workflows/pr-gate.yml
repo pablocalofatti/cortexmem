@@ -1,0 +1,29 @@
+name: PR Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+    steps:
+      - name: Check author
+        id: check
+        run: |
+          ALLOWED="pablocalofatti claude[bot] github-actions[bot]"
+          for user in $ALLOWED; do
+            if [ "$PR_AUTHOR" = "$user" ]; then
+              echo "allowed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "allowed=false" >> "$GITHUB_OUTPUT"
+
+      - name: Block external PRs
+        if: steps.check.outputs.allowed != 'true'
+        run: |
+          echo "::error::PRs from external contributors require manual approval."
+          exit 1
