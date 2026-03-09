@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -10,84 +11,36 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      COMMIT_MSG: ${{ github.event.head_commit.message }}
     steps:
-      - name: Skip release commits
-        run: |
-          if echo "$COMMIT_MSG" | grep -q "chore(release)"; then
-            echo "Skipping release commit"
-            exit 0
-          fi
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-
-      - name: Determine version bump
-        id: bump
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:"%s" 2>/dev/null || git log --pretty=format:"%s")
-
-          BUMP="patch"
-          while IFS= read -r msg; do
-            if echo "$msg" | grep -qE "^feat(\(.*\))?!:|^BREAKING CHANGE"; then
-              BUMP="major"; break
-            elif echo "$msg" | grep -qE "^feat(\(.*\))?:"; then
-              BUMP="minor"
-            fi
-          done <<< "$COMMITS"
-
-          IFS='.' read -r major minor patch <<< "${LAST_TAG#v}"
-          case $BUMP in
-            major) major=$((major + 1)); minor=0; patch=0 ;;
-            minor) minor=$((minor + 1)); patch=0 ;;
-            patch) patch=$((patch + 1)) ;;
-          esac
-
-          VERSION="${major}.${minor}.${patch}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
-
-      - name: Update Cargo.toml version
-        run: |
-          VERSION="${{ steps.bump.outputs.version }}"
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
 
       - name: Generate changelog
         id: changelog
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -n "$LAST_TAG" ]; then
-            RANGE="${LAST_TAG}..HEAD"
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
           else
-            RANGE="HEAD"
+            RANGE="${TAG}"
           fi
 
-          NOTES=$(git log "$RANGE" --pretty=format:"- %s" 2>/dev/null || git log --pretty=format:"- %s")
+          NOTES=$(git log "$RANGE" --pretty=format:"- %s" 2>/dev/null || echo "- Initial release")
           {
             echo "changelog<<EOF"
             echo "$NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create tag and release
+      - name: Create GitHub release
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.bump.outputs.version }}
-          TAG: ${{ steps.bump.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Cargo.toml
-          git commit -m "chore(release): v${VERSION}" || true
-          git tag "$TAG"
-          git push origin main --tags
-
           gh release create "$TAG" \
             --title "$TAG" \
             --notes "$CHANGELOG"
