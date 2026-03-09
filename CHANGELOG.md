@@ -7,18 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-09
+
 ### Fixed
 - **Embedding model mismatch** — switched from NomicEmbedTextV15 (768-dim) to AllMiniLML6V2 (384-dim) matching the sqlite-vec schema
 - **Silent search failures** — `call_search` now logs errors instead of swallowing them via `unwrap_or_default()`
 - **MCP server startup** — added `CORTEXMEM_DB` env var to override database path for environments where default path is inaccessible
 
 ### Added
-- **Auto-download embedding model** on first `mem_save` or `mem_search` call — no manual download step needed
-- **MCP Server Setup guide** in README with `claude mcp add` command, env vars, and troubleshooting
 
-## [1.0.0] - 2026-03-09
-
-### Added
+**Auto-download embedding model**
+- Model downloads automatically on first `mem_save` or `mem_search` call — no manual step needed
+- MCP Server Setup guide in README with `claude mcp add` command, env vars, and troubleshooting
 
 **Setup wizard**
 - Interactive `cortexmem setup` command using `dialoguer` for multi-agent configuration
