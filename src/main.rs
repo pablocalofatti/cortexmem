@@ -82,6 +82,13 @@ enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: i64,
     },
+    /// Start HTTP API server on the given host and port
+    Serve {
+        #[arg(short, long, default_value = "7437")]
+        port: u16,
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -146,6 +153,23 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::RecentPrompts { project, limit } => {
             cortexmem::cli::run_recent_prompts(project, limit)
+        }
+        Commands::Serve { port, host } => {
+            let db_path = std::env::var("CORTEXMEM_DB")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| {
+                    dirs::data_dir()
+                        .unwrap_or_else(|| std::path::PathBuf::from("."))
+                        .join("cortexmem")
+                        .join("cortexmem.db")
+                });
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+            let cache_dir = db_path.parent().unwrap().to_path_buf();
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let server =
+                std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
+            cortexmem::http::start_http_server(server, &host, port).await
         }
     }
 }

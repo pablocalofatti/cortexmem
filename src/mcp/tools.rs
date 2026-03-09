@@ -116,6 +116,8 @@ pub struct MemSessionEndParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MemDeleteParams {
     pub id: i64,
+    #[serde(default)]
+    pub hard: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -458,12 +460,19 @@ impl CortexMemServer {
 
     #[tool(
         name = "mem_delete",
-        description = "Soft-delete an observation by ID (sets deleted_at, recoverable)."
+        description = "Delete an observation by ID. Soft-delete by default (sets deleted_at, recoverable). Pass hard=true for permanent removal."
     )]
     async fn mem_delete(&self, Parameters(params): Parameters<MemDeleteParams>) -> String {
-        match self.call_delete(params.id) {
-            Ok(()) => format!("Observation {} soft-deleted.", params.id),
-            Err(e) => format!("Error deleting observation: {e}"),
+        if params.hard.unwrap_or(false) {
+            match self.call_hard_delete(params.id) {
+                Ok(()) => format!("Observation {} permanently deleted.", params.id),
+                Err(e) => format!("Error deleting observation: {e}"),
+            }
+        } else {
+            match self.call_delete(params.id) {
+                Ok(()) => format!("Observation {} soft-deleted.", params.id),
+                Err(e) => format!("Error deleting observation: {e}"),
+            }
         }
     }
 
@@ -777,6 +786,14 @@ impl CortexMemServer {
         let mgr = self.memory.lock().unwrap();
         mgr.db().soft_delete(id)?;
         mgr.db().remove_from_fts(id).ok();
+        Ok(())
+    }
+
+    pub fn call_hard_delete(&self, id: i64) -> Result<()> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().remove_from_fts(id).ok();
+        mgr.db().delete_vector(id).ok();
+        mgr.db().hard_delete(id)?;
         Ok(())
     }
 

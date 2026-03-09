@@ -3,6 +3,7 @@ mod rrf;
 pub use rrf::rrf_fuse;
 
 use anyhow::Result;
+use serde::Serialize;
 
 use crate::db::Database;
 use crate::embed::EmbeddingManager;
@@ -19,7 +20,7 @@ pub struct SearchParams {
     pub limit: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SearchResult {
     pub id: i64,
     pub title: String,
