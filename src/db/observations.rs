@@ -235,4 +235,42 @@ impl Database {
 
         Ok(observations)
     }
+
+    pub fn list_all_active_observations(&self) -> Result<Vec<Observation>> {
+        let mut stmt = self.conn().prepare(
+            "SELECT id FROM observations WHERE deleted_at IS NULL ORDER BY updated_at DESC",
+        )?;
+
+        let ids: Vec<i64> = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut observations = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(obs) = self.get_observation(id)? {
+                observations.push(obs);
+            }
+        }
+
+        Ok(observations)
+    }
+
+    pub fn update_tier(&self, id: i64, tier: &str) -> Result<()> {
+        self.conn().execute(
+            "UPDATE observations SET tier = ?2 WHERE id = ?1",
+            rusqlite::params![id, tier],
+        )?;
+        Ok(())
+    }
+
+    /// Backdate an observation's timestamps. Used for testing decay rules
+    /// and manual time adjustments.
+    pub fn backdate_observation(&self, id: i64, days_ago: i64) -> Result<()> {
+        let offset = format!("-{days_ago} days");
+        self.conn().execute(
+            "UPDATE observations SET created_at = datetime('now', ?2), updated_at = datetime('now', ?2) WHERE id = ?1",
+            rusqlite::params![id, offset],
+        )?;
+        Ok(())
+    }
 }

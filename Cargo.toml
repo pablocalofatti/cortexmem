@@ -58,6 +58,14 @@ path = "tests/integration/vector_test.rs"
 name = "search_test"
 path = "tests/integration/search_test.rs"
 
+[[test]]
+name = "dedup_test"
+path = "tests/integration/dedup_test.rs"
+
+[[test]]
+name = "lifecycle_test"
+path = "tests/integration/lifecycle_test.rs"
+
 [profile.release]
 lto = true
 strip = true
