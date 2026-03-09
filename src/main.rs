@@ -112,6 +112,12 @@ enum Commands {
         #[arg(long)]
         fix: bool,
     },
+    /// Backfill auto-generated concepts and facts for observations that don't have them
+    AutoTag {
+        /// Process all observations, not just those missing concepts
+        #[arg(long)]
+        all: bool,
+    },
     /// Drop all vectors and re-embed with the configured model
     Reindex,
     #[cfg(feature = "cloud")]
@@ -252,6 +258,56 @@ async fn main() -> anyhow::Result<()> {
             if fix {
                 println!("\nauto-fix not yet implemented");
             }
+            Ok(())
+        }
+        Commands::AutoTag { all } => {
+            let db_path = cortexmem::cli::db_path();
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+
+            let ids = if all {
+                db.list_all_observation_ids()?
+            } else {
+                db.list_observations_without_concepts()?
+            };
+
+            println!("Auto-tagging {} observations...", ids.len());
+            let mut updated = 0;
+
+            for id in &ids {
+                if let Ok(Some(obs)) = db.get_observation(*id) {
+                    let text = format!("{} {}", obs.title, obs.content);
+                    let keywords = cortexmem::memory::autotag::extract_keywords(&text, 6);
+                    let facts = cortexmem::memory::autotag::extract_facts(&obs.content, 3);
+
+                    let concepts_update = if keywords.is_empty() {
+                        None
+                    } else {
+                        Some(&keywords)
+                    };
+                    let facts_update = if facts.is_empty() { None } else { Some(&facts) };
+
+                    if concepts_update.is_some() || facts_update.is_some() {
+                        db.update_observation_fields(
+                            *id,
+                            None,
+                            None,
+                            concepts_update,
+                            facts_update,
+                            None,
+                        )?;
+                        // Re-sync FTS
+                        db.remove_from_fts(*id).ok();
+                        db.sync_observation_to_fts(*id)?;
+                        updated += 1;
+                    }
+                }
+            }
+
+            println!(
+                "Auto-tagged {updated} observations ({} skipped).",
+                ids.len() - updated
+            );
             Ok(())
         }
         Commands::Reindex => {

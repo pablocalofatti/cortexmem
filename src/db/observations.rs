@@ -527,6 +527,16 @@ impl Database {
         Ok(true)
     }
 
+    pub fn list_observations_without_concepts(&self) -> Result<Vec<i64>> {
+        let mut stmt = self.conn().prepare(
+            "SELECT id FROM observations WHERE deleted_at IS NULL AND (concepts IS NULL OR concepts = '[]')",
+        )?;
+        let ids = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<std::result::Result<Vec<i64>, _>>()?;
+        Ok(ids)
+    }
+
     pub fn backdate_observation(&self, id: i64, days_ago: i64) -> Result<()> {
         let offset = format!("-{days_ago} days");
         self.conn().execute(
