@@ -1,4 +1,5 @@
 use cortexmem::db::{Database, NewObservation};
+use cortexmem::memory::MemoryManager;
 use cortexmem::search::{HybridSearcher, SearchParams, rrf_fuse};
 
 fn test_db() -> Database {
@@ -148,4 +149,63 @@ fn should_respect_limit() {
 
     let results = searcher.search(&params).unwrap();
     assert_eq!(results.len(), 5);
+}
+
+#[test]
+fn should_boost_observations_with_feedback() {
+    let db = Database::open_in_memory().unwrap();
+    let mgr = MemoryManager::new(db, None);
+
+    // Save two observations about the same topic
+    let obs1 = NewObservation {
+        project: "test".into(),
+        title: "Auth pattern one".into(),
+        content: "JWT authentication for APIs".into(),
+        obs_type: "pattern".into(),
+        concepts: Some(vec!["authentication".into()]),
+        facts: None,
+        files: None,
+        topic_key: None,
+        scope: "project".into(),
+        session_id: None,
+    };
+    let obs2 = NewObservation {
+        project: "test".into(),
+        title: "Auth pattern two".into(),
+        content: "OAuth2 authentication for APIs".into(),
+        obs_type: "pattern".into(),
+        concepts: Some(vec!["authentication".into()]),
+        facts: None,
+        files: None,
+        topic_key: None,
+        scope: "project".into(),
+        session_id: None,
+    };
+    let r1 = mgr.save_observation(&obs1).unwrap();
+    let r2 = mgr.save_observation(&obs2).unwrap();
+
+    // Record feedback for obs2 (simulating user clicked it 5 times after searching)
+    for _ in 0..5 {
+        mgr.db()
+            .record_search_feedback("authentication", r2.id, None)
+            .unwrap();
+    }
+
+    // Search — obs2 should rank higher due to feedback boost
+    let searcher = HybridSearcher::new(mgr.db(), None);
+    let params = SearchParams {
+        query: "authentication".into(),
+        project: None,
+        obs_type: None,
+        scope: None,
+        limit: 10,
+    };
+    let results = searcher.search(&params).unwrap();
+
+    assert!(results.len() >= 2);
+    // The observation with feedback should rank first
+    assert_eq!(results[0].id, r2.id);
+
+    // Verify obs1 is still in results (no feedback, lower rank)
+    assert!(results.iter().any(|r| r.id == r1.id));
 }

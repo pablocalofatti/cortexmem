@@ -116,8 +116,14 @@ impl<'a> HybridSearcher<'a> {
                 continue;
             }
 
-            // Boost by recency and access count
-            let final_score = apply_boosts(*rrf_score, &obs.updated_at, obs.access_count);
+            // Boost by recency, access count, and search feedback
+            let feedback_count = self.db.get_feedback_count(obs.id).unwrap_or(0);
+            let final_score = apply_boosts(
+                *rrf_score,
+                &obs.updated_at,
+                obs.access_count,
+                feedback_count,
+            );
 
             results.push(SearchResult {
                 id: obs.id,
@@ -140,10 +146,15 @@ impl<'a> HybridSearcher<'a> {
     }
 }
 
-fn apply_boosts(rrf_score: f64, updated_at: &str, access_count: i64) -> f64 {
+const FEEDBACK_BOOST_PER_HIT: f64 = 0.1;
+const FEEDBACK_BOOST_CAP: f64 = 2.0;
+
+fn apply_boosts(rrf_score: f64, updated_at: &str, access_count: i64, feedback_count: i64) -> f64 {
     let recency_factor = compute_recency_factor(updated_at);
     let access_factor = 1.0 + 0.1 * access_count as f64;
-    rrf_score * recency_factor * access_factor
+    let feedback_factor =
+        (1.0 + FEEDBACK_BOOST_PER_HIT * feedback_count as f64).min(FEEDBACK_BOOST_CAP);
+    rrf_score * recency_factor * access_factor * feedback_factor
 }
 
 fn compute_recency_factor(updated_at: &str) -> f64 {
