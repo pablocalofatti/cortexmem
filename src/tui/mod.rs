@@ -65,11 +65,10 @@ fn handle_input(app: &mut App, key: crossterm::event::KeyEvent) {
         Screen::Dashboard => handle_dashboard_input(app, key),
         Screen::Search { .. } => screens::search::handle_input(app, key),
         Screen::SearchResults { .. } => screens::search::handle_results_input(app, key),
-        _ => {
-            if key.code == KeyCode::Esc {
-                app.pop_screen();
-            }
-        }
+        Screen::ObservationDetail { .. } => screens::detail::handle_input(app, key),
+        Screen::Timeline { .. } => screens::timeline::handle_input(app, key),
+        Screen::Sessions { .. } => screens::sessions::handle_list_input(app, key),
+        Screen::SessionDetail { .. } => screens::sessions::handle_detail_input(app, key),
     }
 }
 
@@ -83,8 +82,14 @@ fn handle_dashboard_input(app: &mut App, key: crossterm::event::KeyEvent) {
             });
         }
         KeyCode::Char('n') => {
+            let sessions = app
+                .server
+                .memory_lock()
+                .db()
+                .list_all_sessions_for_export(None)
+                .unwrap_or_default();
             app.push_screen(Screen::Sessions {
-                sessions: Vec::new(),
+                sessions,
                 selected: 0,
             });
         }
