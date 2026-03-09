@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Row, Table};
-use ratatui::Frame;
 
 use crate::tui::app::App;
 use crate::tui::theme;
@@ -11,7 +11,7 @@ pub fn render(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // title bar
+            Constraint::Length(3), // title bar
             Constraint::Min(10),   // stats panel
             Constraint::Length(3), // keybindings help
         ])
@@ -23,10 +23,7 @@ pub fn render(f: &mut Frame, app: &App) {
             " cortexmem ",
             Style::default().fg(theme::MAUVE).bg(theme::SURFACE0),
         ),
-        Span::styled(
-            " dashboard ",
-            Style::default().fg(theme::SUBTEXT),
-        ),
+        Span::styled(" dashboard ", Style::default().fg(theme::SUBTEXT)),
     ]))
     .block(
         Block::default()
@@ -65,10 +62,7 @@ pub fn render(f: &mut Frame, app: &App) {
             // Total count
             let total_line = Paragraph::new(Line::from(vec![
                 Span::styled("Total observations: ", Style::default().fg(theme::SUBTEXT)),
-                Span::styled(
-                    stats.total.to_string(),
-                    Style::default().fg(theme::GREEN),
-                ),
+                Span::styled(stats.total.to_string(), Style::default().fg(theme::GREEN)),
             ]))
             .style(Style::default().bg(theme::BASE));
             f.render_widget(total_line, inner_chunks[0]);
@@ -97,10 +91,7 @@ pub fn render(f: &mut Frame, app: &App) {
             )
             .block(
                 Block::default()
-                    .title(Span::styled(
-                        " By Tier ",
-                        Style::default().fg(theme::BLUE),
-                    ))
+                    .title(Span::styled(" By Tier ", Style::default().fg(theme::BLUE)))
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(theme::SURFACE1)),
             )
@@ -131,10 +122,7 @@ pub fn render(f: &mut Frame, app: &App) {
             )
             .block(
                 Block::default()
-                    .title(Span::styled(
-                        " By Type ",
-                        Style::default().fg(theme::BLUE),
-                    ))
+                    .title(Span::styled(" By Type ", Style::default().fg(theme::BLUE)))
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(theme::SURFACE1)),
             )

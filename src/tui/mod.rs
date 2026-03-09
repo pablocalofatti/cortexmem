@@ -30,10 +30,10 @@ pub fn run(server: Arc<CortexMemServer>) -> Result<()> {
     loop {
         terminal.draw(|f| render(f, &app))?;
 
-        if event::poll(std::time::Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                handle_input(&mut app, key);
-            }
+        if event::poll(std::time::Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+        {
+            handle_input(&mut app, key);
         }
 
         if app.should_quit {

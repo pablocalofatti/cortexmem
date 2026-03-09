@@ -17,7 +17,7 @@ pub enum Screen {
         selected: usize,
     },
     ObservationDetail {
-        obs: Observation,
+        obs: Box<Observation>,
         scroll: u16,
     },
     Timeline {
