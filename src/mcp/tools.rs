@@ -625,7 +625,36 @@ impl CortexMemServer {
             session_id,
         };
         let mgr = self.memory.lock().unwrap();
-        mgr.save_observation(&obs)
+        let result = mgr.save_observation(&obs)?;
+
+        // Capture mutation for sync (fire-and-forget)
+        match &result.dedup_status {
+            DedupResult::HashMatch(_) => {} // No write — skip mutation
+            _ => {
+                let op = match &result.dedup_status {
+                    DedupResult::TopicKeyUpsert(_) => "upsert",
+                    _ => "insert",
+                };
+                let payload = serde_json::json!({
+                    "title": title,
+                    "content": content,
+                    "type": obs_type,
+                })
+                .to_string();
+                if let Err(e) = crate::sync::mutations::capture_mutation(
+                    mgr.db(),
+                    "observation",
+                    &result.id.to_string(),
+                    op,
+                    &payload,
+                    project,
+                ) {
+                    tracing::warn!("Failed to capture sync mutation: {e}");
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     pub fn call_update(
@@ -644,6 +673,25 @@ impl CortexMemServer {
         // Re-sync FTS
         mgr.db().remove_from_fts(id).ok();
         mgr.db().sync_observation_to_fts(id)?;
+
+        // Capture mutation for sync (fire-and-forget)
+        if let Ok(Some(obs)) = mgr.db().get_observation(id) {
+            let payload = serde_json::json!({
+                "title": title.unwrap_or(&obs.title),
+                "content": content.unwrap_or(&obs.content),
+            })
+            .to_string();
+            if let Err(e) = crate::sync::mutations::capture_mutation(
+                mgr.db(),
+                "observation",
+                &id.to_string(),
+                "update",
+                &payload,
+                &obs.project,
+            ) {
+                tracing::warn!("Failed to capture update mutation: {e}");
+            }
+        }
 
         Ok(())
     }
@@ -789,16 +837,54 @@ impl CortexMemServer {
 
     pub fn call_delete(&self, id: i64) -> Result<()> {
         let mgr = self.memory.lock().unwrap();
+
+        // Get observation before delete to capture project for mutation
+        let obs_before = mgr.db().get_observation(id)?;
+
         mgr.db().soft_delete(id)?;
         mgr.db().remove_from_fts(id).ok();
+
+        // Capture mutation for sync (fire-and-forget)
+        if let Some(obs) = obs_before
+            && let Err(e) = crate::sync::mutations::capture_mutation(
+                mgr.db(),
+                "observation",
+                &id.to_string(),
+                "soft_delete",
+                "{}",
+                &obs.project,
+            )
+        {
+            tracing::warn!("Failed to capture delete mutation: {e}");
+        }
+
         Ok(())
     }
 
     pub fn call_hard_delete(&self, id: i64) -> Result<()> {
         let mgr = self.memory.lock().unwrap();
+
+        // Get observation before delete to capture project for mutation
+        let obs_before = mgr.db().get_observation(id)?;
+
         mgr.db().remove_from_fts(id).ok();
         mgr.db().delete_vector(id).ok();
         mgr.db().hard_delete(id)?;
+
+        // Capture mutation for sync (fire-and-forget)
+        if let Some(obs) = obs_before
+            && let Err(e) = crate::sync::mutations::capture_mutation(
+                mgr.db(),
+                "observation",
+                &id.to_string(),
+                "hard_delete",
+                "{}",
+                &obs.project,
+            )
+        {
+            tracing::warn!("Failed to capture hard_delete mutation: {e}");
+        }
+
         Ok(())
     }
 
