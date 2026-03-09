@@ -844,7 +844,8 @@ impl CortexMemServer {
         mgr.db().soft_delete(id)?;
         mgr.db().remove_from_fts(id).ok();
 
-        // Capture mutation for sync (fire-and-forget)
+        // Capture mutation for sync (fire-and-forget).
+        // obs_before is None when deleting a non-existent ID — nothing to sync.
         if let Some(obs) = obs_before
             && let Err(e) = crate::sync::mutations::capture_mutation(
                 mgr.db(),
@@ -871,7 +872,8 @@ impl CortexMemServer {
         mgr.db().delete_vector(id).ok();
         mgr.db().hard_delete(id)?;
 
-        // Capture mutation for sync (fire-and-forget)
+        // Capture mutation for sync (fire-and-forget).
+        // obs_before is None when deleting a non-existent ID — nothing to sync.
         if let Some(obs) = obs_before
             && let Err(e) = crate::sync::mutations::capture_mutation(
                 mgr.db(),
