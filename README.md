@@ -26,7 +26,8 @@ cortexmem fixes this:
 # From source
 cargo install --path .
 
-# Download the embedding model (optional — degrades gracefully to FTS5-only)
+# The embedding model downloads automatically on first use
+# Or download it manually:
 cortexmem model download
 ```
 
@@ -163,6 +164,73 @@ cortexmem model status
 - **SQLite WAL** — concurrent reads, single-writer, ~5ms queries
 - **fastembed** — local ONNX inference, no API keys, Apple Silicon native
 - **384-dim embeddings** — all-MiniLM-L6-v2 via fastembed
+
+## MCP Server Setup
+
+### Using `claude mcp add` (recommended)
+
+The easiest way to register cortexmem as an MCP server:
+
+```bash
+# Install the binary
+cargo install --path .
+
+# Register with Claude Code
+claude mcp add --transport stdio cortexmem -- cortexmem mcp
+
+# Verify it's connected
+claude mcp list
+```
+
+### Using the setup wizard
+
+```bash
+cortexmem setup
+```
+
+The wizard auto-detects your agent and writes the MCP config for you.
+
+### Manual configuration
+
+Add to your agent's MCP config:
+
+```json
+{
+  "cortexmem": {
+    "command": "cortexmem",
+    "args": ["mcp"],
+    "type": "stdio"
+  }
+}
+```
+
+If the binary isn't on your `PATH`, use the full path:
+
+```json
+{
+  "cortexmem": {
+    "command": "/Users/you/.cargo/bin/cortexmem",
+    "args": ["mcp"],
+    "type": "stdio"
+  }
+}
+```
+
+### Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CORTEXMEM_DB` | Override database file path | `<data_dir>/cortexmem/cortexmem.db` |
+| `RUST_LOG` | Enable debug logging (e.g. `cortexmem=debug`) | off |
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| MCP server not showing up | Use `claude mcp list` to check. Try `claude mcp add` instead of editing settings.json manually |
+| "unable to open database file" | Set `CORTEXMEM_DB` to a writable path, or ensure the data directory exists |
+| Binary not found | Use the full path to the binary (e.g. `~/.cargo/bin/cortexmem`) |
+| Embedding model missing | The model auto-downloads on first `mem_save` or `mem_search`. Or run `cortexmem model download` manually |
 
 ## Data Storage
 

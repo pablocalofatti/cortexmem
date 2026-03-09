@@ -51,8 +51,12 @@ impl<'a> HybridSearcher<'a> {
             .map(|(rank, r)| (r.rowid, rank))
             .collect();
 
-        // Step 2: Vector KNN search (if model available)
+        // Step 2: Vector KNN search (auto-download model on first use)
         let vec_ranks: Vec<(i64, usize)> = if let Some(mgr) = self.embed_mgr {
+            if !mgr.is_model_available() {
+                tracing::info!("Embedding model not loaded — downloading on first use...");
+                let _ = mgr.download_model();
+            }
             if mgr.is_model_available() {
                 if let Ok(query_embedding) = mgr.embed(&params.query) {
                     let vec_results = self.db.search_vector(&query_embedding, VEC_FETCH_LIMIT)?;
