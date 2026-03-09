@@ -26,6 +26,7 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "6"
+toml = "0.8"
 dialoguer = "0.11"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
@@ -143,6 +144,10 @@ path = "tests/integration/doctor_test.rs"
 [[test]]
 name = "setup_test"
 path = "tests/integration/setup_test.rs"
+
+[[test]]
+name = "config_test"
+path = "tests/integration/config_test.rs"
 
 [profile.release]
 lto = true
