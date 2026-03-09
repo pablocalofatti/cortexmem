@@ -2,6 +2,7 @@ pub mod protocol;
 mod tools;
 
 pub use tools::CortexMemServer;
+pub use tools::StatsResult;
 
 use anyhow::Result;
 

@@ -99,6 +99,8 @@ enum Commands {
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
     },
+    /// Launch interactive TUI dashboard
+    Tui,
     #[cfg(feature = "cloud")]
     /// Cloud sync server and management
     Cloud {
@@ -187,6 +189,24 @@ async fn main() -> anyhow::Result<()> {
             let server =
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::http::start_http_server(server, &host, port).await
+        }
+        Commands::Tui => {
+            let db_path = std::env::var("CORTEXMEM_DB")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| {
+                    dirs::data_dir()
+                        .unwrap_or_else(|| std::path::PathBuf::from("."))
+                        .join("cortexmem")
+                        .join("cortexmem.db")
+                });
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+            let cache_dir = db_path.parent().unwrap().to_path_buf();
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let server =
+                std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
+            cortexmem::tui::run(server)?;
+            Ok(())
         }
         #[cfg(feature = "cloud")]
         Commands::Cloud { action } => cortexmem::cli::cloud::run_cloud(action).await,

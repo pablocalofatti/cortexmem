@@ -7,3 +7,4 @@ pub mod mcp;
 pub mod memory;
 pub mod search;
 pub mod sync;
+pub mod tui;
