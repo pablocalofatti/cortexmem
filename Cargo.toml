@@ -54,6 +54,10 @@ path = "tests/integration/embed_test.rs"
 name = "vector_test"
 path = "tests/integration/vector_test.rs"
 
+[[test]]
+name = "search_test"
+path = "tests/integration/search_test.rs"
+
 [profile.release]
 lto = true
 strip = true
