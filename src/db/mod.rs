@@ -2,10 +2,12 @@ mod fts;
 mod observations;
 mod schema;
 mod sessions;
+mod vector;
 
 pub use fts::FtsResult;
 pub use observations::{NewObservation, Observation};
 pub use sessions::Session;
+pub use vector::VecResult;
 
 use std::path::Path;
 use std::sync::Once;

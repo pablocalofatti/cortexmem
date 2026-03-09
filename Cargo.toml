@@ -50,6 +50,10 @@ path = "tests/integration/fts_test.rs"
 name = "embed_test"
 path = "tests/integration/embed_test.rs"
 
+[[test]]
+name = "vector_test"
+path = "tests/integration/vector_test.rs"
+
 [profile.release]
 lto = true
 strip = true
