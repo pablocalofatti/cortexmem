@@ -1,6 +1,6 @@
 # Memory Protocol
 
-You have access to **cortexmem**, a persistent memory system with 14 tools. Use it to store and retrieve observations across sessions and context compactions.
+You have access to **cortexmem**, a persistent memory system with 16 tools. Use it to store and retrieve observations across sessions and context compactions.
 
 ## Tools Reference
 
@@ -33,12 +33,29 @@ Updates specific fields by ID. Recomputes content hash and re-embeds.
 | `facts` | string[] | no | New facts |
 | `files` | string[] | no | New file paths |
 
-#### `mem_delete` — Soft-delete an observation
-Sets `deleted_at` timestamp. Observation is recoverable.
+#### `mem_delete` — Delete an observation
+Soft-delete by default (sets `deleted_at`, recoverable). Pass `hard=true` to permanently remove from all tables (observations, FTS, vectors).
 
-| Param | Type | Required |
-|-------|------|----------|
-| `id` | number | yes |
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | number | yes | Observation ID |
+| `hard` | boolean | no | `true` for permanent deletion (default: `false`) |
+
+#### `mem_save_prompt` — Save a user prompt
+Stores a user prompt to the prompt log for the current project. Used to track what tasks were requested across sessions.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | yes | The user prompt text |
+| `project` | string | no | Project name |
+
+#### `mem_recent_prompts` — Retrieve recent prompts
+Returns recent user prompts for the current project. Use to recall what was asked in previous sessions.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `project` | string | no | Filter by project |
+| `limit` | number | no | Max results (default: 10) |
 
 ### Read Tools
 
@@ -135,11 +152,12 @@ No parameters.
 ### Session Lifecycle
 
 ```
-1. mem_session_start  →  creates session, returns recent context
-2. mem_search         →  check existing knowledge before working
-3. mem_save           →  store observations as you work
-4. mem_session_summary → save context before compaction
-5. mem_session_end    →  close session, trigger decay
+1. mem_session_start   →  creates session, returns recent context
+2. mem_search          →  check existing knowledge before working
+3. mem_save_prompt     →  log the user's request for cross-session tracking
+4. mem_save            →  store observations as you work
+5. mem_session_summary →  save context before compaction
+6. mem_session_end     →  close session, trigger decay
 ```
 
 ### Progressive Disclosure (read efficiently)

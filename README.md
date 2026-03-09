@@ -58,9 +58,9 @@ cortexmem model status
 
 ## How It Works
 
-### MCP Tools (14 tools)
+### MCP Tools (16 tools)
 
-cortexmem exposes 14 tools via the [Model Context Protocol](https://modelcontextprotocol.io/):
+cortexmem exposes 16 tools via the [Model Context Protocol](https://modelcontextprotocol.io/):
 
 | Tool | Description |
 |------|-------------|
@@ -74,10 +74,12 @@ cortexmem exposes 14 tools via the [Model Context Protocol](https://modelcontext
 | `mem_session_start` | Start a new session, returns recent context |
 | `mem_session_end` | End session with optional summary, triggers decay |
 | `mem_session_summary` | Persist a compaction summary mid-session |
-| `mem_delete` | Soft-delete an observation (recoverable) |
+| `mem_delete` | Delete an observation (soft by default, `hard=true` for permanent) |
 | `mem_stats` | Memory statistics by type and tier |
 | `mem_compact` | Run decay cycle (promote/archive by access patterns) |
 | `mem_model` | Check or download the embedding model |
+| `mem_save_prompt` | Save a user prompt to the prompt log for cross-session tracking |
+| `mem_recent_prompts` | Retrieve recent user prompts by project |
 
 ### Observation Types
 
@@ -247,7 +249,7 @@ When you run `cortexmem setup` with Claude Code, it installs:
 
 - **Session hooks** — automatically call `mem_session_start` and `mem_session_end`
 - **Compaction recovery** — saves context before context window compaction
-- **Memory Protocol skill** — teaches the agent when and how to save observations
+- **Memory Protocol skill** — full reference for all 16 MCP tools with usage patterns
 
 ```
 ~/.claude/
