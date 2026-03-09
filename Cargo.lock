@@ -564,6 +564,7 @@ dependencies = [
  "http-body-util",
  "jsonwebtoken",
  "openssl",
+ "reqwest",
  "rmcp",
  "rusqlite",
  "schemars",

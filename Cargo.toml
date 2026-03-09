@@ -35,10 +35,11 @@ sqlx-postgres = { version = "0.8", default-features = false, features = ["chrono
 jsonwebtoken = { version = "9", optional = true }
 argon2 = { version = "0.5", optional = true }
 uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.12", features = ["json"], optional = true }
 
 [features]
 default = []
-cloud = ["sqlx-core", "sqlx-postgres", "jsonwebtoken", "argon2"]
+cloud = ["sqlx-core", "sqlx-postgres", "jsonwebtoken", "argon2", "reqwest"]
 
 [dev-dependencies]
 tempfile = "3"
