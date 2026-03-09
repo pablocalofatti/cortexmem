@@ -82,12 +82,7 @@ fn handle_dashboard_input(app: &mut App, key: crossterm::event::KeyEvent) {
             });
         }
         KeyCode::Char('n') => {
-            let sessions = app
-                .server
-                .memory_lock()
-                .db()
-                .list_all_sessions_for_export(None)
-                .unwrap_or_default();
+            let sessions = app.server.call_list_sessions(None);
             app.push_screen(Screen::Sessions {
                 sessions,
                 selected: 0,

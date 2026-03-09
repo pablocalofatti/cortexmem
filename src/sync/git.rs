@@ -69,10 +69,15 @@ pub fn sync_via_git(
     let exported = chunk.observations.len();
 
     // 2. Git add + commit + push
-    Command::new("git")
+    let add_output = Command::new("git")
         .args(["add", "."])
         .current_dir(sync_dir)
         .output()?;
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        anyhow::bail!("git add failed: {stderr}");
+    }
+
     let commit_result = Command::new("git")
         .args([
             "commit",
@@ -82,17 +87,25 @@ pub fn sync_via_git(
         .current_dir(sync_dir)
         .output()?;
     if commit_result.status.success() {
-        Command::new("git")
+        let push_output = Command::new("git")
             .args(["push"])
             .current_dir(sync_dir)
             .output()?;
+        if !push_output.status.success() {
+            let stderr = String::from_utf8_lossy(&push_output.stderr);
+            anyhow::bail!("git push failed: {stderr}");
+        }
     }
 
     // 3. Git pull
-    Command::new("git")
+    let pull_output = Command::new("git")
         .args(["pull", "--rebase"])
         .current_dir(sync_dir)
         .output()?;
+    if !pull_output.status.success() {
+        let stderr = String::from_utf8_lossy(&pull_output.stderr);
+        anyhow::bail!("git pull failed: {stderr}");
+    }
 
     // 4. Import new chunks
     let mut imported = 0;
@@ -117,15 +130,23 @@ pub fn init_sync_repo(sync_dir: &std::path::Path, remote_url: Option<&str>) -> R
 
     fs::create_dir_all(sync_dir)?;
     if let Some(url) = remote_url {
-        Command::new("git")
+        let output = Command::new("git")
             .args(["clone", url, "."])
             .current_dir(sync_dir)
             .output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("git clone failed: {stderr}");
+        }
     } else {
-        Command::new("git")
+        let output = Command::new("git")
             .args(["init"])
             .current_dir(sync_dir)
             .output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("git init failed: {stderr}");
+        }
     }
     Ok(())
 }

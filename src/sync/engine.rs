@@ -1,6 +1,3 @@
-// Sync engine will be wired into CLI/MCP commands in a follow-up task.
-#![allow(dead_code)]
-
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 

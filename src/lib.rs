@@ -1,4 +1,5 @@
 pub mod cli;
+#[cfg(feature = "cloud")]
 pub mod cloud;
 pub mod db;
 pub mod embed;

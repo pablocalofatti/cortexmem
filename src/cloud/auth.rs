@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 const JWT_EXPIRY_SECONDS: usize = 7 * 24 * 60 * 60; // 7 days
 const MIN_PASSWORD_LENGTH: usize = 8;
+const MIN_JWT_SECRET_LENGTH: usize = 32;
 const API_KEY_PREFIX_LENGTH: usize = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,6 +64,12 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 }
 
 pub fn create_jwt(account_id: &Uuid, secret: &str) -> Result<String> {
+    if secret.len() < MIN_JWT_SECRET_LENGTH {
+        bail!(
+            "JWT secret must be at least {} characters",
+            MIN_JWT_SECRET_LENGTH
+        );
+    }
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs() as usize;
@@ -91,6 +98,10 @@ pub fn verify_jwt(token: &str, secret: &str) -> Result<Claims> {
 }
 
 pub async fn register(pool: &PgPool, email: &str, password: &str) -> Result<Uuid> {
+    if !email.contains('@') || !email.contains('.') {
+        bail!("Invalid email format");
+    }
+
     if password.len() < MIN_PASSWORD_LENGTH {
         bail!(
             "Password must be at least {} characters",
@@ -143,10 +154,19 @@ pub async fn login(
     })
 }
 
+/// Hash an API key using SHA-256. API keys are high-entropy random tokens,
+/// so a fast hash is sufficient (unlike passwords which need Argon2).
+fn hash_api_key(key: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(key.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 pub async fn generate_api_key(pool: &PgPool, account_id: &Uuid) -> Result<ApiKeyResponse> {
     let raw_key = format!("ctx_{}", Uuid::new_v4().as_simple());
     let prefix = raw_key[..API_KEY_PREFIX_LENGTH].to_string();
-    let key_hash = hash_password(&raw_key)?;
+    let key_hash = hash_api_key(&raw_key);
 
     query::<Postgres>("INSERT INTO api_keys (account_id, key_hash, prefix) VALUES ($1, $2, $3)")
         .bind(account_id)
@@ -167,21 +187,18 @@ pub async fn verify_api_key(pool: &PgPool, key: &str) -> Result<Uuid> {
     }
 
     let prefix = &key[..API_KEY_PREFIX_LENGTH];
+    let key_hash = hash_api_key(key);
 
-    let rows: Vec<PgRow> = query::<Postgres>(
-        "SELECT account_id, key_hash FROM api_keys WHERE prefix = $1 AND revoked_at IS NULL",
+    let row: Option<PgRow> = query::<Postgres>(
+        "SELECT account_id FROM api_keys WHERE prefix = $1 AND key_hash = $2 AND revoked_at IS NULL",
     )
     .bind(prefix)
-    .fetch_all(pool)
+    .bind(&key_hash)
+    .fetch_optional(pool)
     .await?;
 
-    for row in rows {
-        let stored_hash: String = row.get("key_hash");
-        if verify_password(key, &stored_hash)? {
-            let account_id: Uuid = row.get("account_id");
-            return Ok(account_id);
-        }
+    match row {
+        Some(row) => Ok(row.get("account_id")),
+        None => bail!("Invalid API key"),
     }
-
-    bail!("Invalid API key")
 }

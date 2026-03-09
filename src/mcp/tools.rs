@@ -635,12 +635,18 @@ impl CortexMemServer {
                     DedupResult::TopicKeyUpsert(_) => "upsert",
                     _ => "insert",
                 };
-                let payload = serde_json::json!({
-                    "title": title,
-                    "content": content,
-                    "type": obs_type,
-                })
-                .to_string();
+                // Serialize the full observation so the remote end can reconstruct it
+                let payload = match mgr.db().get_observation(result.id) {
+                    Ok(Some(full_obs)) => {
+                        serde_json::to_string(&full_obs).unwrap_or_else(|_| "{}".to_string())
+                    }
+                    _ => serde_json::json!({
+                        "title": title,
+                        "content": content,
+                        "type": obs_type,
+                    })
+                    .to_string(),
+                };
                 if let Err(e) = crate::sync::mutations::capture_mutation(
                     mgr.db(),
                     "observation",
@@ -674,14 +680,10 @@ impl CortexMemServer {
         mgr.db().remove_from_fts(id).ok();
         mgr.db().sync_observation_to_fts(id)?;
 
-        // Capture mutation for sync (fire-and-forget)
+        // Capture mutation for sync — serialize full updated observation
         match mgr.db().get_observation(id) {
             Ok(Some(obs)) => {
-                let payload = serde_json::json!({
-                    "title": title.unwrap_or(&obs.title),
-                    "content": content.unwrap_or(&obs.content),
-                })
-                .to_string();
+                let payload = serde_json::to_string(&obs).unwrap_or_else(|_| "{}".to_string());
                 if let Err(e) = crate::sync::mutations::capture_mutation(
                     mgr.db(),
                     "observation",
@@ -936,6 +938,13 @@ impl CortexMemServer {
     pub fn call_recent_prompts(&self, project: Option<&str>, limit: i64) -> Result<Vec<Prompt>> {
         let mgr = self.memory.lock().unwrap();
         mgr.db().get_recent_prompts(project, limit)
+    }
+
+    pub fn call_list_sessions(&self, project: Option<&str>) -> Vec<Session> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db()
+            .list_all_sessions_for_export(project)
+            .unwrap_or_default()
     }
 
     /// Expose the memory manager lock for testing (e.g., backdating observations).

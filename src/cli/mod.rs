@@ -12,13 +12,18 @@ use crate::db::Database;
 use crate::embed::EmbeddingManager;
 use crate::mcp::CortexMemServer;
 
-/// Resolve the default database path (~/.local/share/cortexmem/cortexmem.db on Linux,
+/// Resolve the database path. Respects `CORTEXMEM_DB` env var, falling back to
+/// platform default (~/.local/share/cortexmem/cortexmem.db on Linux,
 /// ~/Library/Application Support/cortexmem/cortexmem.db on macOS).
-pub(crate) fn db_path() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("cortexmem")
-        .join("cortexmem.db")
+pub fn db_path() -> PathBuf {
+    std::env::var("CORTEXMEM_DB")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::data_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("cortexmem")
+                .join("cortexmem.db")
+        })
 }
 
 /// Infer project name from the current working directory basename.
