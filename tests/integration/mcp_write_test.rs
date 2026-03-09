@@ -1,25 +1,10 @@
-use cortexmem::db::{Database, NewObservation};
+use cortexmem::db::Database;
 use cortexmem::mcp::CortexMemServer;
 use cortexmem::memory::DedupResult;
 
 fn test_server() -> CortexMemServer {
     let db = Database::open_in_memory().unwrap();
     CortexMemServer::new(db, None)
-}
-
-fn sample_obs(title: &str) -> NewObservation {
-    NewObservation {
-        project: "testproject".into(),
-        title: title.into(),
-        content: format!("Content for {title}"),
-        obs_type: "decision".into(),
-        concepts: Some(vec!["auth".into()]),
-        facts: Some(vec!["JWT chosen".into()]),
-        files: None,
-        topic_key: None,
-        scope: "project".into(),
-        session_id: None,
-    }
 }
 
 #[test]
