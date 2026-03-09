@@ -42,6 +42,11 @@ Single Rust binary: CLI + MCP server (stdio). SQLite (WAL) + FTS5 + sqlite-vec +
 - Use `Vec::with_capacity` when size is known
 - Batch SQLite operations in transactions
 
+### Linting & Formatting
+- **Always run before committing:** `cargo fmt && cargo clippy -- -D warnings`
+- `cargo fmt --check` is enforced in CI — code that doesn't pass will fail the pipeline
+- Fix all clippy warnings — they are treated as errors (`-D warnings`)
+
 ### Git
 - Conventional commits: `feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`
 - One logical change per commit
