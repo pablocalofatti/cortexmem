@@ -51,9 +51,9 @@ fn doctor_should_warn_for_missing_embedding_model() {
 }
 
 #[test]
-fn doctor_should_have_nine_checks() {
+fn doctor_should_have_ten_checks() {
     let db = Database::open_in_memory().unwrap();
     let server = CortexMemServer::new(db, None);
     let results = run_checks(&server);
-    assert_eq!(results.len(), 9);
+    assert_eq!(results.len(), 10);
 }
