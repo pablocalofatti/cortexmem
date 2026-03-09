@@ -1,4 +1,4 @@
-use crate::db::Observation;
+use crate::db::{Observation, Prompt};
 use crate::memory::CompactionStats;
 
 pub fn format_compact(observations: &[Observation]) -> String {
@@ -52,6 +52,17 @@ pub fn format_full(obs: &Observation) -> String {
         obs.access_count, obs.revision_count, obs.created_at, obs.updated_at, obs.content,
     ));
 
+    out
+}
+
+pub fn format_prompts(prompts: &[Prompt]) -> String {
+    if prompts.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from("## Recent Prompts\n");
+    for p in prompts {
+        out.push_str(&format!("- [{}] {}\n", p.created_at, p.content));
+    }
     out
 }
 

@@ -367,29 +367,34 @@ impl CortexMemServer {
 
     #[tool(
         name = "mem_context",
-        description = "Get recent observations from previous sessions for the current project. Use at session start for context recovery."
+        description = "Get recent observations and prompts from previous sessions for the current project. Use at session start for context recovery."
     )]
     async fn mem_context(&self, Parameters(params): Parameters<MemContextParams>) -> String {
-        let limit = 20i64;
-        match params.project {
-            Some(ref project) => match self.call_context(Some(project), limit) {
-                Ok(observations) => {
-                    if observations.is_empty() {
-                        return "No previous context found.".to_string();
-                    }
+        const OBS_LIMIT: i64 = 20;
+        const PROMPT_LIMIT: i64 = 10;
+        let project = params.project.as_deref();
+
+        let obs_section = match self.call_context(project, OBS_LIMIT) {
+            Ok(observations) if !observations.is_empty() => {
+                format!(
+                    "## Recent Observations\n{}",
                     protocol::format_compact(&observations)
-                }
-                Err(e) => format!("Error getting context: {e}"),
-            },
-            None => match self.call_context(None, limit) {
-                Ok(observations) => {
-                    if observations.is_empty() {
-                        return "No previous context found.".to_string();
-                    }
-                    protocol::format_compact(&observations)
-                }
-                Err(e) => format!("Error getting context: {e}"),
-            },
+                )
+            }
+            Ok(_) => String::new(),
+            Err(e) => format!("Error getting observations: {e}"),
+        };
+
+        let prompt_section = match self.call_recent_prompts(project, PROMPT_LIMIT) {
+            Ok(prompts) => protocol::format_prompts(&prompts),
+            Err(e) => format!("Error getting prompts: {e}"),
+        };
+
+        match (obs_section.is_empty(), prompt_section.is_empty()) {
+            (true, true) => "No previous context found.".to_string(),
+            (false, true) => obs_section,
+            (true, false) => prompt_section,
+            (false, false) => format!("{obs_section}\n{prompt_section}"),
         }
     }
 
