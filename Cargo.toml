@@ -126,6 +126,10 @@ path = "tests/integration/sync_db_test.rs"
 name = "mutation_capture_test"
 path = "tests/integration/mutation_capture_test.rs"
 
+[[test]]
+name = "git_sync_test"
+path = "tests/integration/git_sync_test.rs"
+
 [profile.release]
 lto = true
 strip = true

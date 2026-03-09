@@ -6,4 +6,4 @@ pub mod http;
 pub mod mcp;
 pub mod memory;
 pub mod search;
-pub(crate) mod sync;
+pub mod sync;
