@@ -1,4 +1,4 @@
-# cortexmem Roadmap Design — v0.1.0 through v0.3.0
+# cortexmem Roadmap Design — v1.0.0 through v1.2.0
 
 **Date:** 2026-03-09
 **Status:** Approved
@@ -16,7 +16,7 @@ This document specifies features across three releases that evolve cortexmem fro
 
 ---
 
-## v0.1.0 — High Impact, Low Effort
+## v1.0.0 — High Impact, Low Effort
 
 ### Feature 1: `cortexmem setup` — Interactive Setup Wizard
 
@@ -180,7 +180,7 @@ Covered by Feature 1. The interactive wizard handles all 6 agents. Key differenc
 
 ---
 
-## v0.2.0 — Next Release
+## v1.1.0 — Next Release
 
 ### Feature 5: HTTP API — `cortexmem serve`
 
@@ -301,7 +301,7 @@ pub struct MemDeleteParams {
 class Cortexmem < Formula
   desc "Persistent vector memory for AI coding agents"
   homepage "https://github.com/pablocalofatti/cortexmem"
-  version "0.1.0"
+  version "1.0.0"
 
   on_macos do
     on_arm do
@@ -341,7 +341,7 @@ end
 
 ---
 
-## v0.3.0 — Major Release
+## v1.2.0 — Major Release
 
 ### Feature 9: Cloud Sync — Self-hosted Postgres Backend
 
@@ -603,16 +603,16 @@ CREATE TABLE IF NOT EXISTS sync_chunks (
 
 | Version | New Dependencies |
 |---------|-----------------|
-| v0.1.0 | `dialoguer = "0.11"` |
-| v0.2.0 | `axum = "0.8"`, `tower-http = "0.6"` |
-| v0.3.0 | `sqlx = "0.8"`, `jsonwebtoken = "9"`, `argon2 = "0.5"`, `ratatui = "0.29"`, `crossterm = "0.28"`, `uuid = "1"` |
+| v1.0.0 | `dialoguer = "0.11"` |
+| v1.1.0 | `axum = "0.8"`, `tower-http = "0.6"` |
+| v1.2.0 | `sqlx = "0.8"`, `jsonwebtoken = "9"`, `argon2 = "0.5"`, `ratatui = "0.29"`, `crossterm = "0.28"`, `uuid = "1"` |
 
 ## Migration Plan
 
 | Version | Schema Version | Changes |
 |---------|---------------|---------|
-| v0.1.0 | 1 (current) | No schema changes |
-| v0.2.0 | 2 | Add `user_prompts` + `prompts_fts` tables |
-| v0.3.0 | 3 | Add `sync_mutations`, `sync_state`, `sync_chunks` tables |
+| v1.0.0 | 1 (current) | No schema changes |
+| v1.1.0 | 2 | Add `user_prompts` + `prompts_fts` tables |
+| v1.2.0 | 3 | Add `sync_mutations`, `sync_state`, `sync_chunks` tables |
 
 Migrations are additive — existing data is never lost.
