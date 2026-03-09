@@ -76,6 +76,19 @@ enum Commands {
         #[arg(long)]
         hard: bool,
     },
+    /// Save a user prompt to the prompt log
+    SavePrompt {
+        content: String,
+        #[arg(long)]
+        project: Option<String>,
+    },
+    /// List recent prompts for a project
+    RecentPrompts {
+        #[arg(long)]
+        project: Option<String>,
+        #[arg(short, long, default_value = "10")]
+        limit: i64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -136,5 +149,11 @@ async fn main() -> anyhow::Result<()> {
         Commands::Import { file, replace } => cortexmem::cli::export::run_import(file, replace),
         Commands::Setup => cortexmem::cli::setup::run_setup(),
         Commands::Delete { id, hard } => cortexmem::cli::run_delete(id, hard),
+        Commands::SavePrompt { content, project } => {
+            cortexmem::cli::run_save_prompt(content, project)
+        }
+        Commands::RecentPrompts { project, limit } => {
+            cortexmem::cli::run_recent_prompts(project, limit)
+        }
     }
 }

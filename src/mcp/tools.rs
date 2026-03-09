@@ -10,7 +10,7 @@ use rmcp::{
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::db::{Database, NewObservation, Observation, Session};
+use crate::db::{Database, NewObservation, Observation, Prompt, Session};
 use crate::embed::{EmbeddingManager, ModelStatus};
 use crate::memory::{CompactionStats, DedupResult, MemoryManager, SaveResult};
 
@@ -134,6 +134,21 @@ pub struct MemCompactParams {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MemModelParams {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct MemSavePromptParams {
+    pub content: String,
+    #[serde(default)]
+    pub project: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct MemRecentPromptsParams {
+    #[serde(default)]
+    pub project: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -354,29 +369,34 @@ impl CortexMemServer {
 
     #[tool(
         name = "mem_context",
-        description = "Get recent observations from previous sessions for the current project. Use at session start for context recovery."
+        description = "Get recent observations and prompts from previous sessions for the current project. Use at session start for context recovery."
     )]
     async fn mem_context(&self, Parameters(params): Parameters<MemContextParams>) -> String {
-        let limit = 20i64;
-        match params.project {
-            Some(ref project) => match self.call_context(Some(project), limit) {
-                Ok(observations) => {
-                    if observations.is_empty() {
-                        return "No previous context found.".to_string();
-                    }
+        const OBS_LIMIT: i64 = 20;
+        const PROMPT_LIMIT: i64 = 10;
+        let project = params.project.as_deref();
+
+        let obs_section = match self.call_context(project, OBS_LIMIT) {
+            Ok(observations) if !observations.is_empty() => {
+                format!(
+                    "## Recent Observations\n{}",
                     protocol::format_compact(&observations)
-                }
-                Err(e) => format!("Error getting context: {e}"),
-            },
-            None => match self.call_context(None, limit) {
-                Ok(observations) => {
-                    if observations.is_empty() {
-                        return "No previous context found.".to_string();
-                    }
-                    protocol::format_compact(&observations)
-                }
-                Err(e) => format!("Error getting context: {e}"),
-            },
+                )
+            }
+            Ok(_) => String::new(),
+            Err(e) => format!("Error getting observations: {e}"),
+        };
+
+        let prompt_section = match self.call_recent_prompts(project, PROMPT_LIMIT) {
+            Ok(prompts) => protocol::format_prompts(&prompts),
+            Err(e) => format!("Error getting prompts: {e}"),
+        };
+
+        match (obs_section.is_empty(), prompt_section.is_empty()) {
+            (true, true) => "No previous context found.".to_string(),
+            (false, true) => obs_section,
+            (true, false) => prompt_section,
+            (false, false) => format!("{obs_section}\n{prompt_section}"),
         }
     }
 
@@ -520,6 +540,43 @@ impl CortexMemServer {
                 }
             },
             None => "Embedding model: disabled (no cache directory configured)".to_string(),
+        }
+    }
+
+    #[tool(
+        name = "mem_save_prompt",
+        description = "Save a user prompt to the prompt log for the current project. Used to track what tasks were requested."
+    )]
+    async fn mem_save_prompt(&self, Parameters(params): Parameters<MemSavePromptParams>) -> String {
+        let session_id = *self.current_session.lock().unwrap();
+        let project = params.project.clone();
+        match self.call_save_prompt(session_id, &params.content, project.as_deref()) {
+            Ok(id) => format!("Prompt saved: id={id}"),
+            Err(e) => format!("Error saving prompt: {e}"),
+        }
+    }
+
+    #[tool(
+        name = "mem_recent_prompts",
+        description = "Retrieve recent user prompts for the current project. Use to recall what was asked in previous sessions."
+    )]
+    async fn mem_recent_prompts(
+        &self,
+        Parameters(params): Parameters<MemRecentPromptsParams>,
+    ) -> String {
+        let limit = params.limit.unwrap_or(10);
+        match self.call_recent_prompts(params.project.as_deref(), limit) {
+            Ok(prompts) => {
+                if prompts.is_empty() {
+                    return "No prompts found.".to_string();
+                }
+                prompts
+                    .iter()
+                    .map(|p| format!("[{}] {} — {}", p.id, p.created_at, p.content))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            Err(e) => format!("Error retrieving prompts: {e}"),
         }
     }
 }
@@ -768,6 +825,21 @@ impl CortexMemServer {
             Some(e) => e.download_model(),
             None => Err(anyhow::anyhow!("No embedding manager configured")),
         }
+    }
+
+    pub fn call_save_prompt(
+        &self,
+        session_id: Option<i64>,
+        content: &str,
+        project: Option<&str>,
+    ) -> Result<i64> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().insert_prompt(session_id, content, project)
+    }
+
+    pub fn call_recent_prompts(&self, project: Option<&str>, limit: i64) -> Result<Vec<Prompt>> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().get_recent_prompts(project, limit)
     }
 
     /// Expose the memory manager lock for testing (e.g., backdating observations).

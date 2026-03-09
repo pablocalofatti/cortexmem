@@ -97,6 +97,31 @@ fn mem_context_should_return_recent() {
 }
 
 #[test]
+fn mem_context_should_include_prompts_when_present() {
+    let server = test_server();
+    save_obs(&server, "Context obs 1", "decision");
+    server
+        .call_save_prompt(None, "Fix the login bug", Some("testproject"))
+        .unwrap();
+
+    // call_context returns observations only — the enriched output is in the MCP handler
+    // Test the protocol layer directly
+    let prompts = server.call_recent_prompts(Some("testproject"), 10).unwrap();
+    assert_eq!(prompts.len(), 1);
+    assert_eq!(prompts[0].content, "Fix the login bug");
+
+    let formatted = cortexmem::mcp::protocol::format_prompts(&prompts);
+    assert!(formatted.contains("Fix the login bug"));
+    assert!(formatted.contains("Recent Prompts"));
+}
+
+#[test]
+fn format_prompts_should_return_empty_string_for_no_prompts() {
+    let formatted = cortexmem::mcp::protocol::format_prompts(&[]);
+    assert!(formatted.is_empty());
+}
+
+#[test]
 fn mem_suggest_topic_should_find_similar_keys() {
     let server = test_server();
 
