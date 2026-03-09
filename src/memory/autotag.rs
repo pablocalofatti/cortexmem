@@ -47,8 +47,11 @@ fn stem(word: &str) -> String {
     {
         return stripped.to_string();
     }
-    if w.ends_with('s') && !w.ends_with("ss") && w.len() > 4 {
-        return w[..w.len() - 1].to_string();
+    if let Some(stripped) = w.strip_suffix('s')
+        && !w.ends_with("ss")
+        && w.len() > 4
+    {
+        return stripped.to_string();
     }
     w
 }
