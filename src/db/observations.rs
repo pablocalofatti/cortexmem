@@ -255,6 +255,58 @@ impl Database {
         Ok(observations)
     }
 
+    pub fn update_observation_fields(
+        &self,
+        id: i64,
+        title: Option<&str>,
+        content: Option<&str>,
+        concepts: Option<&Vec<String>>,
+        facts: Option<&Vec<String>>,
+        files: Option<&Vec<String>>,
+    ) -> Result<()> {
+        let mut sets = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+
+        if let Some(t) = title {
+            sets.push("title = ?");
+            params.push(Box::new(t.to_string()));
+        }
+        if let Some(c) = content {
+            let hash = compute_content_hash(c);
+            sets.push("content = ?");
+            params.push(Box::new(c.to_string()));
+            sets.push("content_hash = ?");
+            params.push(Box::new(hash));
+        }
+        if let Some(c) = concepts {
+            sets.push("concepts = ?");
+            params.push(Box::new(serde_json::to_string(c).unwrap_or_default()));
+        }
+        if let Some(f) = facts {
+            sets.push("facts = ?");
+            params.push(Box::new(serde_json::to_string(f).unwrap_or_default()));
+        }
+        if let Some(f) = files {
+            sets.push("files = ?");
+            params.push(Box::new(serde_json::to_string(f).unwrap_or_default()));
+        }
+
+        if sets.is_empty() {
+            return Ok(());
+        }
+
+        sets.push("revision_count = revision_count + 1");
+        sets.push("updated_at = datetime('now')");
+
+        let sql = format!("UPDATE observations SET {} WHERE id = ?", sets.join(", "));
+        params.push(Box::new(id));
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        self.conn().execute(&sql, param_refs.as_slice())?;
+
+        Ok(())
+    }
+
     pub fn update_tier(&self, id: i64, tier: &str) -> Result<()> {
         self.conn().execute(
             "UPDATE observations SET tier = ?2 WHERE id = ?1",
