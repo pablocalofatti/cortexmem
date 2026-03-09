@@ -95,6 +95,10 @@ path = "tests/integration/export_test.rs"
 name = "prompts_test"
 path = "tests/integration/prompts_test.rs"
 
+[[test]]
+name = "mcp_prompts_test"
+path = "tests/integration/mcp_prompts_test.rs"
+
 [profile.release]
 lto = true
 strip = true

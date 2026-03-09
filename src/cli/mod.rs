@@ -174,3 +174,25 @@ pub fn run_compact() -> Result<()> {
     );
     Ok(())
 }
+
+pub fn run_save_prompt(content: String, project: Option<String>) -> Result<()> {
+    let server = open_server()?;
+    let project = project.unwrap_or_else(detect_project);
+    let id = server.call_save_prompt(None, &content, Some(&project))?;
+    println!("Prompt saved: id={id}");
+    Ok(())
+}
+
+pub fn run_recent_prompts(project: Option<String>, limit: i64) -> Result<()> {
+    let server = open_server()?;
+    let project = project.unwrap_or_else(detect_project);
+    let prompts = server.call_recent_prompts(Some(&project), limit)?;
+    if prompts.is_empty() {
+        println!("No prompts found.");
+        return Ok(());
+    }
+    for p in &prompts {
+        println!("[{}] {} — {}", p.id, p.created_at, p.content);
+    }
+    Ok(())
+}

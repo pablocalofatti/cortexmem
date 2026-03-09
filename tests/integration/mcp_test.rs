@@ -2,14 +2,14 @@ use cortexmem::db::Database;
 use cortexmem::mcp::CortexMemServer;
 
 #[test]
-fn should_list_14_tools() {
+fn should_list_16_tools() {
     let db = Database::open_in_memory().unwrap();
     let server = CortexMemServer::new(db, None);
     let tools = server.list_tools();
     assert_eq!(
         tools.len(),
-        14,
-        "Expected 14 MCP tools, got {}",
+        16,
+        "Expected 16 MCP tools, got {}",
         tools.len()
     );
 }
@@ -54,6 +54,8 @@ fn should_have_all_expected_tool_names() {
         "mem_stats",
         "mem_compact",
         "mem_model",
+        "mem_save_prompt",
+        "mem_recent_prompts",
     ];
 
     for name in &expected {
