@@ -26,3 +26,9 @@ jobs:
 
       - name: Test
         run: cargo test --verbose
+
+      - name: Lint (cloud feature)
+        run: cargo clippy --features cloud -- -D warnings
+
+      - name: Test (cloud feature)
+        run: cargo test --features cloud --test cloud_auth_test --verbose
