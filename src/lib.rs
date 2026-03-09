@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod cloud;
 pub mod db;
 pub mod embed;
 pub mod http;
