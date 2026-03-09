@@ -117,6 +117,89 @@ buffer → working → core
 
 `mem_compact` evaluates each observation and promotes or archives based on access count, revision count, and age.
 
+## Interactive TUI
+
+```bash
+cortexmem tui
+```
+
+Launch a full terminal dashboard with 7 screens:
+
+| Screen | Description |
+|--------|-------------|
+| Dashboard | Memory stats: total count, by-tier, by-type |
+| Search | Live text input with cursor, press Enter to search |
+| Results | Navigable result list with scores and concepts |
+| Detail | Full observation view with scrollable content |
+| Timeline | Chronological exploration around a target observation |
+| Sessions | Browse all sessions with summaries |
+| Session Detail | Full session info with linked observations |
+
+**Keybindings:** `j/k` or arrow keys to navigate, `Enter` to open, `Esc` to go back, `q` to quit, `s` or `/` to search, `n` for sessions.
+
+Uses the Catppuccin Mocha color theme.
+
+## Cloud Sync
+
+Share memories across machines with a PostgreSQL-backed sync server. Requires the `cloud` feature flag:
+
+```bash
+cargo install --path . --features cloud
+```
+
+### Server
+
+```bash
+# Start the cloud sync server
+cortexmem cloud serve --port 8080
+
+# Or with a custom database URL
+DATABASE_URL=postgres://user:pass@host/cortexmem cortexmem cloud serve
+```
+
+### Client
+
+```bash
+# Point to your cloud server
+cortexmem cloud set-server https://your-server.example.com
+
+# Register and log in
+cortexmem cloud register --username alice --password secret
+cortexmem cloud login --username alice --password secret
+
+# Enroll a project for syncing
+cortexmem cloud enroll --project myproject
+
+# Push/pull manually
+cortexmem cloud push --project myproject
+cortexmem cloud pull --project myproject
+
+# Or auto-sync on an interval
+cortexmem cloud auto-sync --project myproject --interval 300
+```
+
+Authentication uses Argon2 password hashing + JWT tokens. API keys are also supported for programmatic access (`cortexmem cloud create-api-key`).
+
+## Git Sync
+
+Share memories with your team via a git repository — no cloud server needed:
+
+```bash
+# Initialize a sync repo (local or remote)
+cortexmem git-sync init --repo git@github.com:team/memories.git
+
+# Run a single sync cycle
+cortexmem git-sync run --project myproject
+
+# Check sync status
+cortexmem git-sync status
+
+# Auto-sync every 5 minutes
+cortexmem git-sync auto --interval 300 --project myproject
+```
+
+Git sync exports observations as JSON chunks, commits/pushes them, then pulls and imports new chunks from teammates. Content-hash dedup prevents duplicates on import.
+
 ## CLI
 
 ```bash
