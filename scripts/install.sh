@@ -196,11 +196,13 @@ add_to_path() {
         fi
     }
 
-    # Always try both if they exist; many users source both
-    add_line_if_missing "${HOME}/.bashrc"
-    add_line_if_missing "${HOME}/.zshrc"
+    # Only modify the rc file for the current shell
+    case "${SHELL_NAME}" in
+        zsh)  add_line_if_missing "${HOME}/.zshrc" ;;
+        *)    add_line_if_missing "${HOME}/.bashrc" ;;
+    esac
 
-    # If neither existed, create the one matching current shell
+    # If the detected rc file didn't exist, create it
     if [ "${ADDED}" = false ]; then
         case "${SHELL_NAME}" in
             zsh)  RC_FILE="${HOME}/.zshrc" ;;

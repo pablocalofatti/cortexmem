@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Diagnostics (`cortexmem doctor`)**
 - 9 diagnostic checks: database, schema, embedding model, FTS5 index, vector index, MCP config, cloud sync, git sync
-- `--fix` flag for auto-repair (model download, FTS reindex, setup wizard)
+- `--fix` flag (placeholder for future auto-repair; prints guidance for now)
 - Formatted output with OK/WARN/FAIL status per check
 
 **Setup wizard improvements**

@@ -25,8 +25,15 @@ function getArchiveName() {
   return archive;
 }
 
-function download(url) {
+const MAX_REDIRECTS = 5;
+
+function download(url, redirectCount = 0) {
   return new Promise((resolve, reject) => {
+    if (redirectCount > MAX_REDIRECTS) {
+      reject(new Error(`Too many redirects (${MAX_REDIRECTS}), last URL: ${url}`));
+      return;
+    }
+
     https
       .get(url, (response) => {
         // Follow redirects (GitHub releases redirect to S3)
@@ -35,7 +42,7 @@ function download(url) {
           response.statusCode < 400 &&
           response.headers.location
         ) {
-          return download(response.headers.location).then(resolve, reject);
+          return download(response.headers.location, redirectCount + 1).then(resolve, reject);
         }
 
         if (response.statusCode !== 200) {
