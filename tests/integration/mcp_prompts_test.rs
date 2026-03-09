@@ -14,9 +14,7 @@ fn should_save_and_retrieve_prompt_via_server() {
         .unwrap();
     assert!(id > 0);
 
-    let prompts = server
-        .call_recent_prompts(Some("myproject"), 10)
-        .unwrap();
+    let prompts = server.call_recent_prompts(Some("myproject"), 10).unwrap();
     assert_eq!(prompts.len(), 1);
     assert_eq!(prompts[0].content, "Implement the login feature");
     assert_eq!(prompts[0].project, Some("myproject".to_string()));
@@ -25,7 +23,9 @@ fn should_save_and_retrieve_prompt_via_server() {
 #[test]
 fn should_return_empty_when_no_prompts() {
     let server = make_server();
-    let prompts = server.call_recent_prompts(Some("empty-project"), 10).unwrap();
+    let prompts = server
+        .call_recent_prompts(Some("empty-project"), 10)
+        .unwrap();
     assert!(prompts.is_empty());
 }
 

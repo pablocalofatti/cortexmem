@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-09
+
+### Added
+
+**HTTP API (`cortexmem serve`)**
+- Full REST API via axum 0.8 on port 7437 (localhost-only)
+- 16 endpoints: health, CRUD observations, sessions, search, context, timeline, stats, compact, prompts
+- CORS enabled via tower-http for local dev tool integrations
+- All handlers share `CortexMemServer.call_*()` — zero logic duplication with MCP and CLI
+
+**User prompt storage (`mem_save_prompt`)**
+- New `user_prompts` table with FTS5 search (schema v2, additive migration)
+- `mem_save_prompt` MCP tool — stores user prompts separately from observations
+- `mem_recent_prompts` MCP tool — retrieve recent prompts by project
+- `mem_context` enriched — now includes recent prompts alongside observations
+- CLI: `cortexmem save-prompt` and `cortexmem recent-prompts` commands
+
+**Hard delete**
+- `mem_delete` now accepts `hard=true` for permanent removal
+- Hard delete removes from observations, FTS5 index, and vector store
+- CLI: `cortexmem delete <id> --hard`
+
+**Cross-platform release binaries**
+- Matrix build for 4 targets: darwin-arm64, darwin-x64, linux-arm64, linux-x64
+- Archives uploaded as GitHub release assets
+
+**SKILL.md improvements**
+- Progressive disclosure enforcement — mandatory `mem_get` after `mem_search`
+- Topic key naming conventions with 9 family prefixes
+- Workflow state persistence pattern for multi-agent orchestrators
+
+### Changed
+- Schema version bumped from 1 to 2 (additive — existing data untouched)
+- MCP tool count increased from 14 to 16
+- Test suite expanded from 71 to 107 integration tests
+
 ## [1.0.0] - 2026-03-09
 
 ### Fixed
@@ -113,5 +149,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2 unit tests for embedding pipeline
 - `Database::open_in_memory()` for all DB tests — no temp files
 
-[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pablocalofatti/cortexmem/releases/tag/v1.0.0
