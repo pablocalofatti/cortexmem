@@ -106,6 +106,12 @@ enum Commands {
         #[command(subcommand)]
         action: GitSyncAction,
     },
+    /// Run diagnostic checks on the cortexmem installation
+    Doctor {
+        /// Attempt to auto-fix detected issues
+        #[arg(long)]
+        fix: bool,
+    },
     #[cfg(feature = "cloud")]
     /// Cloud sync server and management
     Cloud {
@@ -227,6 +233,15 @@ async fn main() -> anyhow::Result<()> {
                 cortexmem::cli::sync::run_sync_auto(interval, project.as_deref()).await
             }
         },
+        Commands::Doctor { fix } => {
+            let server = cortexmem::cli::open_server()?;
+            let results = cortexmem::cli::doctor::run_checks(&server);
+            cortexmem::cli::doctor::print_results(&results);
+            if fix {
+                println!("\nauto-fix not yet implemented");
+            }
+            Ok(())
+        }
         #[cfg(feature = "cloud")]
         Commands::Cloud { action } => cortexmem::cli::cloud::run_cloud(action).await,
     }

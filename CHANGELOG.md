@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-09
+
+### Added
+
+**Distribution & Installation**
+- Homebrew formula support via `pablocalofatti/tap/cortexmem` tap
+- npm/npx wrapper (`npm install -g cortexmem`) with platform-specific binary download
+- Shell installer (`curl -fsSL .../install.sh | sh`) with platform detection, curl/wget fallback, PATH setup
+- Docker image (`ghcr.io/pablocalofatti/cortexmem`) for cloud server deployment
+- Multi-stage Dockerfile: `rust:1.83-slim` builder → `debian:bookworm-slim` runtime
+
+**Diagnostics (`cortexmem doctor`)**
+- 9 diagnostic checks: database, schema, embedding model, FTS5 index, vector index, MCP config, cloud sync, git sync
+- `--fix` flag for auto-repair (model download, FTS reindex, setup wizard)
+- Formatted output with OK/WARN/FAIL status per check
+
+**Setup wizard improvements**
+- Auto-detection of installed agents before prompting
+- Post-setup verification (runs `cortexmem --version` to confirm binary)
+- Added Zed and Cline agent support (now 8 agents total)
+
+**Release workflow**
+- Added darwin-x64 target to build matrix (4 targets total)
+- npm publish step syncing version from git tag
+- Docker build and push to GHCR with version + latest tags
+- Homebrew tap update trigger via repository dispatch
+
+### Changed
+- `docker-compose.yml` updated to use published GHCR image instead of local build
+- Setup wizard `config_path()` and `ALL_AGENTS` are now public for doctor command reuse
+- Test suite at 112 integration tests
+
 ## [1.2.0] - 2026-03-09
 
 ### Added
@@ -195,7 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2 unit tests for embedding pipeline
 - `Database::open_in_memory()` for all DB tests — no temp files
 
-[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pablocalofatti/cortexmem/releases/tag/v1.0.0

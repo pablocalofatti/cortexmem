@@ -8,5 +8,14 @@ services:
     ports: ["5433:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
 
+  cortexmem-cloud:
+    image: ghcr.io/pablocalofatti/cortexmem:latest
+    environment:
+      POSTGRES_DB: cortexmem_cloud
+      POSTGRES_USER: cortexmem
+      POSTGRES_PASSWORD: cortexmem_dev
+    ports: ["8080:8080"]
+    depends_on: [postgres]
+
 volumes:
   pgdata:

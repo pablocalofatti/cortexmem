@@ -1,6 +1,6 @@
 [package]
 name = "cortexmem"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2024"
 license = "MIT"
 description = "Persistent vector memory for AI coding agents"
@@ -135,6 +135,14 @@ path = "tests/integration/git_sync_test.rs"
 [[test]]
 name = "cloud_auth_test"
 path = "tests/integration/cloud_auth_test.rs"
+
+[[test]]
+name = "doctor_test"
+path = "tests/integration/doctor_test.rs"
+
+[[test]]
+name = "setup_test"
+path = "tests/integration/setup_test.rs"
 
 [profile.release]
 lto = true

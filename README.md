@@ -22,12 +22,38 @@ cortexmem fixes this:
 
 ### Install
 
-```bash
-# From source
-cargo install --path .
+Choose your preferred installation method:
 
-# The embedding model downloads automatically on first use
-# Or download it manually:
+**Homebrew (macOS/Linux)**
+```bash
+brew install pablocalofatti/tap/cortexmem
+```
+
+**npm / npx**
+```bash
+npm install -g cortexmem
+# or run without installing:
+npx cortexmem setup
+```
+
+**Shell installer**
+```bash
+curl -fsSL https://raw.githubusercontent.com/pablocalofatti/cortexmem/main/scripts/install.sh | sh
+```
+
+**Docker (cloud server only)**
+```bash
+docker pull ghcr.io/pablocalofatti/cortexmem:latest
+docker run -p 8080:8080 ghcr.io/pablocalofatti/cortexmem:latest
+```
+
+**From source**
+```bash
+cargo install --path .
+```
+
+The embedding model downloads automatically on first use, or download manually:
+```bash
 cortexmem model download
 ```
 
@@ -41,11 +67,15 @@ The interactive wizard configures cortexmem as an MCP server for your AI agent. 
 
 | Agent | Config Location |
 |-------|----------------|
-| Claude Code | `~/.claude/settings.json` |
+| Claude Code | `~/.claude.json` → `mcpServers` |
 | Cursor | `~/.cursor/mcp.json` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
-| Cline / Roo Code | `.vscode/mcp.json` (workspace) |
+| Cline / Roo Code | `.vscode/cline_mcp_settings.json` |
 | Continue | `~/.continue/config.json` |
+| OpenCode | `~/.config/opencode/config.json` |
+| VS Code | `.vscode/mcp.json` |
+| Zed | `~/.config/zed/settings.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
 
 For Claude Code, the wizard also installs the Memory Protocol skill (session hooks, compaction recovery, and the SKILL.md that teaches the agent when and how to save observations).
 
@@ -55,6 +85,14 @@ For Claude Code, the wizard also installs the Memory Protocol skill (session hoo
 cortexmem stats
 cortexmem model status
 ```
+
+### Diagnostics
+
+```bash
+cortexmem doctor
+```
+
+Runs 9 checks on your installation: database, schema, embedding model, FTS5 index, vector index, MCP config, cloud sync, and git sync status. Use `--fix` to auto-repair common issues.
 
 ## How It Works
 

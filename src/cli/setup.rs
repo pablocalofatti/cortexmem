@@ -12,6 +12,8 @@ pub enum Agent {
     Windsurf,
     VsCode,
     GeminiCli,
+    Zed,
+    Cline,
 }
 
 impl fmt::Display for Agent {
@@ -23,21 +25,25 @@ impl fmt::Display for Agent {
             Agent::Windsurf => write!(f, "Windsurf"),
             Agent::VsCode => write!(f, "VS Code"),
             Agent::GeminiCli => write!(f, "Gemini CLI"),
+            Agent::Zed => write!(f, "Zed"),
+            Agent::Cline => write!(f, "Cline"),
         }
     }
 }
 
-const ALL_AGENTS: &[Agent] = &[
+pub const ALL_AGENTS: &[Agent] = &[
     Agent::ClaudeCode,
     Agent::OpenCode,
     Agent::Cursor,
     Agent::Windsurf,
     Agent::VsCode,
     Agent::GeminiCli,
+    Agent::Zed,
+    Agent::Cline,
 ];
 
 impl Agent {
-    fn config_path(&self) -> Option<PathBuf> {
+    pub fn config_path(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
         Some(match self {
             Agent::ClaudeCode => home.join(".claude").join("settings.json"),
@@ -48,16 +54,34 @@ impl Agent {
                 .join("windsurf")
                 .join("mcp_config.json"),
             Agent::VsCode => std::env::current_dir()
-                .unwrap_or_default()
+                .ok()?
                 .join(".vscode")
                 .join("mcp.json"),
             Agent::GeminiCli => home.join(".gemini").join("settings.json"),
+            Agent::Zed => home.join(".config").join("zed").join("settings.json"),
+            Agent::Cline => std::env::current_dir()
+                .ok()?
+                .join(".vscode")
+                .join("cline_mcp_settings.json"),
         })
     }
 
     fn supports_hooks(&self) -> bool {
         matches!(self, Agent::ClaudeCode)
     }
+}
+
+pub fn detect_installed_agents() -> Vec<(Agent, bool)> {
+    ALL_AGENTS
+        .iter()
+        .map(|agent| {
+            let detected = agent
+                .config_path()
+                .map(|p| p.exists() || p.parent().map(|d| d.exists()).unwrap_or(false))
+                .unwrap_or(false);
+            (*agent, detected)
+        })
+        .collect()
 }
 
 fn mcp_config_value() -> serde_json::Value {
@@ -165,6 +189,27 @@ fn install_claude_plugin() -> Result<()> {
 pub fn run_setup() -> Result<()> {
     println!("cortexmem setup\n");
 
+    let detected = detect_installed_agents();
+    let has_detected = detected.iter().any(|(_, d)| *d);
+
+    if has_detected {
+        println!("Detected agents:");
+        for (agent, det) in &detected {
+            if *det {
+                println!("  - {} (config found)", agent);
+            }
+        }
+        let not_detected: Vec<_> = detected
+            .iter()
+            .filter(|(_, d)| !*d)
+            .map(|(a, _)| a.to_string())
+            .collect();
+        if !not_detected.is_empty() {
+            println!("\nNot detected: {}", not_detected.join(", "));
+        }
+        println!();
+    }
+
     let items: Vec<String> = ALL_AGENTS.iter().map(|a| a.to_string()).collect();
     let selection = Select::new()
         .with_prompt("Which AI agent do you use?")
@@ -180,6 +225,18 @@ pub fn run_setup() -> Result<()> {
     if agent.supports_hooks() {
         println!("\nInstalling Claude Code plugin files...");
         install_claude_plugin()?;
+    }
+
+    println!("\nVerifying cortexmem binary...");
+    match std::process::Command::new("cortexmem")
+        .args(["--version"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let version = String::from_utf8_lossy(&output.stdout);
+            println!("  Verified: {}", version.trim());
+        }
+        _ => println!("  Warning: could not verify cortexmem binary in PATH"),
     }
 
     println!("\nSetup complete! Restart {} to activate cortexmem.", agent);

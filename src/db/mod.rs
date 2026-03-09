@@ -1,7 +1,7 @@
 mod fts;
 mod observations;
 mod prompts;
-mod schema;
+pub(crate) mod schema;
 mod sessions;
 mod sync;
 
@@ -92,5 +92,34 @@ impl Database {
 
     pub(crate) fn conn(&self) -> &Connection {
         &self.conn
+    }
+
+    /// Read a value from the `meta` key-value table.
+    pub fn get_meta(&self, key: &str) -> Option<String> {
+        self.conn
+            .query_row("SELECT value FROM meta WHERE key = ?1", [key], |row| {
+                row.get(0)
+            })
+            .ok()
+    }
+
+    /// Count rows in the FTS5 index table.
+    pub fn count_fts_entries(&self) -> Result<i64> {
+        let count: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM observations_fts", [], |row| {
+                    row.get(0)
+                })?;
+        Ok(count)
+    }
+
+    /// Count rows in the vector index table.
+    pub fn count_vector_entries(&self) -> Result<i64> {
+        let count: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM vec_observations", [], |row| {
+                    row.get(0)
+                })?;
+        Ok(count)
     }
 }

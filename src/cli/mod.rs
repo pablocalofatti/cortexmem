@@ -1,5 +1,6 @@
 #[cfg(feature = "cloud")]
 pub mod cloud;
+pub mod doctor;
 pub mod export;
 pub mod setup;
 pub mod sync;
@@ -35,7 +36,7 @@ pub(crate) fn detect_project() -> String {
 }
 
 /// Open DB and create a server instance for CLI operations.
-fn open_server() -> Result<CortexMemServer> {
+pub fn open_server() -> Result<CortexMemServer> {
     let path = db_path();
     std::fs::create_dir_all(path.parent().unwrap())?;
 
