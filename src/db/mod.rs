@@ -1,3 +1,4 @@
+mod feedback;
 mod fts;
 mod observations;
 mod prompts;
