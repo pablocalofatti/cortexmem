@@ -1,7 +1,11 @@
+mod fts;
 mod observations;
 mod schema;
+mod sessions;
 
+pub use fts::FtsResult;
 pub use observations::{NewObservation, Observation};
+pub use sessions::Session;
 
 use std::path::Path;
 use std::sync::Once;
