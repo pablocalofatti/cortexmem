@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use axum::extract::{Path, Query};
 use axum::http::{HeaderMap, StatusCode};
 use axum::{Json, Router, extract::State, routing};
 use serde_json::{Value, json};
@@ -9,6 +10,7 @@ use sqlx_core::raw_sql::raw_sql;
 use sqlx_postgres::PgPool;
 
 use super::auth;
+use super::sync;
 
 pub struct CloudState {
     pub pool: PgPool,
@@ -23,6 +25,12 @@ pub fn build_cloud_router(state: SharedCloudState) -> Router {
         .route("/auth/register", routing::post(register_handler))
         .route("/auth/login", routing::post(login_handler))
         .route("/auth/api-key", routing::post(create_api_key_handler))
+        .route("/sync/push", routing::post(push_handler))
+        .route("/sync/pull", routing::get(pull_handler))
+        .route("/sync/ack", routing::post(ack_handler))
+        .route("/projects/enroll", routing::post(enroll_handler))
+        .route("/projects/:name", routing::delete(unenroll_handler))
+        .route("/projects", routing::get(list_projects_handler))
         .with_state(state)
 }
 
@@ -102,6 +110,102 @@ async fn create_api_key_handler(
             "prefix": api_key.prefix,
         })),
     ))
+}
+
+async fn authenticate_api_key(
+    pool: &PgPool,
+    headers: &HeaderMap,
+) -> Result<uuid::Uuid, (StatusCode, String)> {
+    let key = extract_bearer(headers)?;
+    auth::verify_api_key(pool, key)
+        .await
+        .map_err(|e| (StatusCode::UNAUTHORIZED, e.to_string()))
+}
+
+async fn push_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+    Json(body): Json<sync::PushRequest>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    let response = sync::push_mutations(&state.pool, &account_id, &body)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(json!({
+        "accepted": response.accepted,
+        "last_seq": response.last_seq,
+    })))
+}
+
+async fn pull_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+    Query(params): Query<sync::PullParams>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    let mutations = sync::pull_mutations(&state.pool, &account_id, &params)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(json!({ "mutations": mutations })))
+}
+
+async fn ack_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+    Json(body): Json<sync::AckRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    sync::ack_mutations(&state.pool, &account_id, body.up_to_seq)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn enroll_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+    Json(body): Json<sync::EnrollRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    sync::enroll_project(&state.pool, &account_id, &body.project)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::CREATED)
+}
+
+async fn unenroll_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+    Path(name): Path<String>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    sync::unenroll_project(&state.pool, &account_id, &name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn list_projects_handler(
+    State(state): State<SharedCloudState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let account_id = authenticate_api_key(&state.pool, &headers).await?;
+
+    let projects = sync::list_projects(&state.pool, &account_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(json!({ "projects": projects })))
 }
 
 pub async fn start_cloud_server(
