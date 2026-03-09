@@ -4,7 +4,7 @@ use anyhow::Result;
 use rmcp::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::ServerInfo,
+    model::{ServerCapabilities, ServerInfo, ToolsCapability},
     tool, tool_handler, tool_router,
 };
 use schemars::JsonSchema;
@@ -176,7 +176,9 @@ pub struct CortexMemServer {
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for CortexMemServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(Default::default()).with_instructions(
+        let mut capabilities = ServerCapabilities::default();
+        capabilities.tools = Some(ToolsCapability::default());
+        ServerInfo::new(capabilities).with_instructions(
             "Persistent vector memory for AI coding agents. \
              Use mem_save to store observations and mem_search to retrieve them.",
         )
