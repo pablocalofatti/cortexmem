@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
 
+#[cfg(feature = "cloud")]
+use cortexmem::cli::cloud::CloudAction;
+
 #[derive(Parser)]
 #[command(
     name = "cortexmem",
@@ -96,6 +99,12 @@ enum Commands {
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
     },
+    #[cfg(feature = "cloud")]
+    /// Cloud sync server and management
+    Cloud {
+        #[command(subcommand)]
+        action: CloudAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -179,5 +188,7 @@ async fn main() -> anyhow::Result<()> {
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::http::start_http_server(server, &host, port).await
         }
+        #[cfg(feature = "cloud")]
+        Commands::Cloud { action } => cortexmem::cli::cloud::run_cloud(action).await,
     }
 }
