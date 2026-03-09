@@ -174,3 +174,15 @@ pub fn run_compact() -> Result<()> {
     );
     Ok(())
 }
+
+pub fn run_delete(id: i64, hard: bool) -> Result<()> {
+    let server = open_server()?;
+    if hard {
+        server.call_hard_delete(id)?;
+        println!("Observation {id} permanently deleted.");
+    } else {
+        server.call_delete(id)?;
+        println!("Observation {id} soft-deleted.");
+    }
+    Ok(())
+}

@@ -185,3 +185,27 @@ fn mem_session_summary_should_persist() {
         Some("Implemented auth module with JWT")
     );
 }
+
+#[test]
+fn should_hard_delete_observation_and_remove_from_fts() {
+    let server = test_server();
+    let result = server
+        .call_save(
+            "proj",
+            "to-delete",
+            "content",
+            "discovery",
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+    let id = result.id;
+    assert!(server.call_get(id).unwrap().is_some());
+    server.call_hard_delete(id).unwrap();
+    assert!(server.call_get(id).unwrap().is_none());
+    let results = server.call_search("to-delete", Some("proj"), None, None, None);
+    assert!(results.is_empty());
+}

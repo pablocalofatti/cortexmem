@@ -69,6 +69,13 @@ enum Commands {
     },
     /// Set up cortexmem for your AI agent (interactive wizard)
     Setup,
+    /// Delete an observation by ID
+    Delete {
+        id: i64,
+        /// Permanently remove from all tables (default: soft-delete only)
+        #[arg(long)]
+        hard: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -128,5 +135,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Export { output, project } => cortexmem::cli::export::run_export(output, project),
         Commands::Import { file, replace } => cortexmem::cli::export::run_import(file, replace),
         Commands::Setup => cortexmem::cli::setup::run_setup(),
+        Commands::Delete { id, hard } => cortexmem::cli::run_delete(id, hard),
     }
 }
