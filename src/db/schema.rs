@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rusqlite::Connection;
 
-const CURRENT_VERSION: i64 = 2;
+const CURRENT_VERSION: i64 = 3;
 
 pub fn migrate(conn: &Connection) -> Result<()> {
     let version = get_schema_version(conn);
@@ -94,6 +94,41 @@ pub fn migrate(conn: &Connection) -> Result<()> {
                 content,
                 project,
                 tokenize='porter unicode61'
+            );
+            ",
+        )?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', '2')",
+            [],
+        )?;
+    }
+
+    if version < 3 {
+        conn.execute_batch(
+            "
+            CREATE TABLE IF NOT EXISTS sync_mutations (
+                seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+                entity      TEXT NOT NULL,
+                entity_key  TEXT NOT NULL,
+                op          TEXT NOT NULL,
+                payload     TEXT NOT NULL,
+                project     TEXT NOT NULL,
+                occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+                acked_at    TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS sync_state (
+                target_key      TEXT PRIMARY KEY,
+                last_pushed_seq INTEGER DEFAULT 0,
+                last_pulled_seq INTEGER DEFAULT 0,
+                last_error      TEXT,
+                updated_at      TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS sync_chunks (
+                chunk_id    TEXT PRIMARY KEY,
+                imported_at TEXT DEFAULT (datetime('now'))
             );
             ",
         )?;
