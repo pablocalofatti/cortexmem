@@ -63,6 +63,8 @@ fn render(f: &mut ratatui::Frame, app: &App) {
 fn handle_input(app: &mut App, key: crossterm::event::KeyEvent) {
     match &app.screen {
         Screen::Dashboard => handle_dashboard_input(app, key),
+        Screen::Search { .. } => screens::search::handle_input(app, key),
+        Screen::SearchResults { .. } => screens::search::handle_results_input(app, key),
         _ => {
             if key.code == KeyCode::Esc {
                 app.pop_screen();
