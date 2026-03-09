@@ -1,6 +1,6 @@
 use anyhow::Result;
 use sqlx_core::executor::Executor;
-use sqlx_core::raw_sql;
+use sqlx_core::raw_sql::raw_sql;
 use sqlx_postgres::PgPool;
 
 pub async fn run_migrations(pool: &PgPool) -> Result<()> {

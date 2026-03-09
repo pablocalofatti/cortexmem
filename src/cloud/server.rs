@@ -4,7 +4,7 @@ use anyhow::Result;
 use axum::{Json, Router, extract::State, routing};
 use serde_json::json;
 use sqlx_core::executor::Executor;
-use sqlx_core::raw_sql;
+use sqlx_core::raw_sql::raw_sql;
 use sqlx_postgres::PgPool;
 
 pub struct CloudState {
