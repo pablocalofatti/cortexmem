@@ -85,6 +85,33 @@ fn should_capture_mutation_on_update() {
 }
 
 #[test]
+fn should_capture_mutation_on_hard_delete() {
+    let db = Database::open_in_memory().unwrap();
+    let server = CortexMemServer::new(db, None);
+
+    let result = server
+        .call_save(
+            "proj",
+            "To hard delete",
+            "Content",
+            "discovery",
+            None,
+            None,
+            None,
+            None,
+            Some("project".to_string()),
+        )
+        .unwrap();
+
+    server.call_hard_delete(result.id).unwrap();
+
+    let mgr = server.memory_lock();
+    let mutations = mgr.db().list_unacked_mutations(100).unwrap();
+    assert_eq!(mutations.len(), 2);
+    assert_eq!(mutations[1].op, "hard_delete");
+}
+
+#[test]
 fn should_not_capture_mutation_on_hash_duplicate() {
     let db = Database::open_in_memory().unwrap();
     let server = CortexMemServer::new(db, None);

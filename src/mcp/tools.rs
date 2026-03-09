@@ -675,21 +675,29 @@ impl CortexMemServer {
         mgr.db().sync_observation_to_fts(id)?;
 
         // Capture mutation for sync (fire-and-forget)
-        if let Ok(Some(obs)) = mgr.db().get_observation(id) {
-            let payload = serde_json::json!({
-                "title": title.unwrap_or(&obs.title),
-                "content": content.unwrap_or(&obs.content),
-            })
-            .to_string();
-            if let Err(e) = crate::sync::mutations::capture_mutation(
-                mgr.db(),
-                "observation",
-                &id.to_string(),
-                "update",
-                &payload,
-                &obs.project,
-            ) {
-                tracing::warn!("Failed to capture update mutation: {e}");
+        match mgr.db().get_observation(id) {
+            Ok(Some(obs)) => {
+                let payload = serde_json::json!({
+                    "title": title.unwrap_or(&obs.title),
+                    "content": content.unwrap_or(&obs.content),
+                })
+                .to_string();
+                if let Err(e) = crate::sync::mutations::capture_mutation(
+                    mgr.db(),
+                    "observation",
+                    &id.to_string(),
+                    "update",
+                    &payload,
+                    &obs.project,
+                ) {
+                    tracing::warn!("Failed to capture update mutation: {e}");
+                }
+            }
+            Ok(None) => {
+                tracing::warn!("Cannot capture update mutation: observation {id} not found");
+            }
+            Err(e) => {
+                tracing::warn!("Cannot capture update mutation for {id}: {e}");
             }
         }
 

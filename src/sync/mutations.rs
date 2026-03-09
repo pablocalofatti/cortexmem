@@ -3,8 +3,8 @@ use anyhow::Result;
 use crate::db::Database;
 
 /// Records a mutation for sync replication.
-/// Called after every write operation. Failures are logged but not propagated.
-pub fn capture_mutation(
+/// Called after every write operation. Callers handle errors via fire-and-forget logging.
+pub(crate) fn capture_mutation(
     db: &Database,
     entity: &str,
     entity_key: &str,
