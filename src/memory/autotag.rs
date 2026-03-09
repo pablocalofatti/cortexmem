@@ -105,6 +105,8 @@ pub fn extract_keywords(text: &str, limit: usize) -> Vec<String> {
 
 /// Extract declarative sentences as candidate facts.
 /// Picks sentences that look like statements (not questions, not too short).
+/// Excludes TODO/FIXME prefixes because they are task markers, not factual statements —
+/// storing them as "facts" would pollute memory with stale action items.
 pub fn extract_facts(text: &str, limit: usize) -> Vec<String> {
     text.split('.')
         .map(|s| s.trim().to_string())
