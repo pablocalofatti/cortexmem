@@ -1,29 +1,53 @@
+# PR Gate — ensures external contributors have the repo owner's approval.
+# Auto-passes for PRs by the owner, Minion Worker bot, or GitHub Actions bot.
+# Blocks external PRs until @pablocalofatti explicitly approves.
+
 name: PR Gate
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
-  gate:
+  pr-gate:
     runs-on: ubuntu-latest
-    env:
-      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+    permissions:
+      pull-requests: read
     steps:
-      - name: Check author
-        id: check
-        run: |
-          ALLOWED="pablocalofatti claude[bot] github-actions[bot]"
-          for user in $ALLOWED; do
-            if [ "$PR_AUTHOR" = "$user" ]; then
-              echo "allowed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "allowed=false" >> "$GITHUB_OUTPUT"
+      - name: Check PR author and approvals
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const OWNER = 'pablocalofatti';
+            const TRUSTED_AUTHORS = [OWNER, 'claude[bot]', 'github-actions[bot]'];
 
-      - name: Block external PRs
-        if: steps.check.outputs.allowed != 'true'
-        run: |
-          echo "::error::PRs from external contributors require manual approval."
-          exit 1
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            // Trusted authors: auto-pass
+            if (TRUSTED_AUTHORS.includes(author)) {
+              core.info(`PR author "${author}" is trusted — gate passed.`);
+              return;
+            }
+
+            // External contributor: check if owner has approved
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const ownerApproved = reviews.some(
+              r => r.user.login === OWNER && r.state === 'APPROVED'
+            );
+
+            if (ownerApproved) {
+              core.info(`Owner @${OWNER} has approved — gate passed.`);
+              return;
+            }
+
+            core.setFailed(
+              `External PR by @${author} requires approval from @${OWNER} before merging.`
+            );
