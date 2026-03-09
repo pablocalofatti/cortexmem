@@ -46,6 +46,10 @@ path = "tests/integration/sessions_test.rs"
 name = "fts_test"
 path = "tests/integration/fts_test.rs"
 
+[[test]]
+name = "embed_test"
+path = "tests/integration/embed_test.rs"
+
 [profile.release]
 lto = true
 strip = true
