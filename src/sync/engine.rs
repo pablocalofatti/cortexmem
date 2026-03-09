@@ -66,7 +66,10 @@ pub async fn push(db: &Database, config: &SyncConfig) -> Result<i64> {
             .into_iter()
             .map(|m| {
                 let payload_value: serde_json::Value =
-                    serde_json::from_str(&m.payload).unwrap_or_default();
+                    serde_json::from_str(&m.payload).unwrap_or_else(|e| {
+                        tracing::warn!(seq = m.seq, error = %e, "failed to parse mutation payload as JSON");
+                        serde_json::Value::Object(Default::default())
+                    });
                 MutationPayload {
                     entity: m.entity,
                     entity_key: m.entity_key,

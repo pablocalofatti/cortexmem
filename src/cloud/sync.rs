@@ -62,20 +62,23 @@ pub async fn push_mutations(
     account_id: &Uuid,
     req: &PushRequest,
 ) -> Result<PushResponse> {
+    // Pre-load enrolled projects to avoid N+1 queries
+    let enrolled_rows: Vec<PgRow> =
+        query::<Postgres>("SELECT project FROM enrolled_projects WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_all(pool)
+            .await?;
+
+    let enrolled_projects: std::collections::HashSet<String> = enrolled_rows
+        .iter()
+        .map(|r| r.get::<String, _>("project"))
+        .collect();
+
     let mut accepted: i64 = 0;
     let mut last_seq: i64 = 0;
 
     for mutation in &req.mutations {
-        let enrolled_row: PgRow = query::<Postgres>(
-            "SELECT EXISTS(SELECT 1 FROM enrolled_projects WHERE account_id = $1 AND project = $2) AS enrolled",
-        )
-        .bind(account_id)
-        .bind(&mutation.project)
-        .fetch_one(pool)
-        .await?;
-
-        let enrolled: bool = enrolled_row.get("enrolled");
-        if !enrolled {
+        if !enrolled_projects.contains(&mutation.project) {
             continue;
         }
 
