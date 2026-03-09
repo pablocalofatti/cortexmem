@@ -17,6 +17,16 @@ fn should_parse_config_from_toml_file() {
 }
 
 #[test]
+fn should_store_and_read_embedding_model_in_meta() {
+    let db = cortexmem::db::Database::open_in_memory().unwrap();
+    db.set_meta("embedding_model", "BGESmallENV15").unwrap();
+    assert_eq!(
+        db.get_meta("embedding_model"),
+        Some("BGESmallENV15".to_string())
+    );
+}
+
+#[test]
 fn should_use_default_for_unknown_keys() {
     let mut f = NamedTempFile::new().unwrap();
     writeln!(f, "[some_future_section]").unwrap();

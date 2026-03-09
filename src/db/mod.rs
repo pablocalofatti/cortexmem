@@ -103,6 +103,15 @@ impl Database {
             .ok()
     }
 
+    /// Write a value to the `meta` key-value table.
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+            [key, value],
+        )?;
+        Ok(())
+    }
+
     /// Count rows in the FTS5 index table.
     pub fn count_fts_entries(&self) -> Result<i64> {
         let count: i64 =

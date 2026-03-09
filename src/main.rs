@@ -206,8 +206,13 @@ async fn main() -> anyhow::Result<()> {
             let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             let db = cortexmem::db::Database::open(&db_path)?;
+            let config = cortexmem::config::Config::load();
+            db.set_meta("embedding_model", &config.embedding.model).ok();
             let cache_dir = db_path.parent().unwrap().to_path_buf();
-            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new_with_model(
+                &cache_dir,
+                &config.embedding.model,
+            );
             let server =
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::http::start_http_server(server, &host, port).await
@@ -216,8 +221,13 @@ async fn main() -> anyhow::Result<()> {
             let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             let db = cortexmem::db::Database::open(&db_path)?;
+            let config = cortexmem::config::Config::load();
+            db.set_meta("embedding_model", &config.embedding.model).ok();
             let cache_dir = db_path.parent().unwrap().to_path_buf();
-            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new_with_model(
+                &cache_dir,
+                &config.embedding.model,
+            );
             let server =
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::tui::run(server)?;
