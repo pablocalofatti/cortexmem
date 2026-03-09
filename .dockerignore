@@ -1,0 +1,9 @@
+target/
+.git/
+*.md
+docs/
+tests/
+npm/
+scripts/
+.github/
+.codegraph/
