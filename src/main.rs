@@ -11,7 +11,53 @@ struct Cli {
 enum Commands {
     /// Launch MCP server (stdio transport)
     Mcp,
-    /// Show version and status
+    /// Save an observation to memory
+    Save {
+        #[arg(short, long)]
+        title: String,
+        #[arg(short, long)]
+        content: String,
+        #[arg(long, default_value = "discovery")]
+        r#type: String,
+        #[arg(long)]
+        topic_key: Option<String>,
+        #[arg(long, value_delimiter = ',')]
+        concepts: Option<Vec<String>>,
+        #[arg(long, value_delimiter = ',')]
+        facts: Option<Vec<String>>,
+        #[arg(long, value_delimiter = ',')]
+        files: Option<Vec<String>>,
+    },
+    /// Search memories
+    Search {
+        query: String,
+        #[arg(short, long, default_value = "20")]
+        limit: usize,
+        #[arg(long)]
+        r#type: Option<String>,
+        #[arg(long)]
+        project: Option<String>,
+    },
+    /// Get full observation by ID
+    Get {
+        id: i64,
+    },
+    /// Show database statistics
+    Stats,
+    /// Manage embedding model
+    Model {
+        #[command(subcommand)]
+        action: ModelAction,
+    },
+    /// Run compaction (promote/archive observations by decay rules)
+    Compact,
+}
+
+#[derive(Subcommand)]
+enum ModelAction {
+    /// Download the embedding model
+    Download,
+    /// Show model status
     Status,
 }
 
@@ -35,9 +81,27 @@ async fn main() -> anyhow::Result<()> {
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             cortexmem::mcp::start_mcp_server(db_path.to_str().unwrap()).await
         }
-        Commands::Status => {
-            println!("cortexmem v{}", env!("CARGO_PKG_VERSION"));
-            Ok(())
-        }
+        Commands::Save {
+            title,
+            content,
+            r#type,
+            topic_key,
+            concepts,
+            facts,
+            files,
+        } => cortexmem::cli::run_save(title, content, r#type, topic_key, concepts, facts, files),
+        Commands::Search {
+            query,
+            limit,
+            r#type,
+            project,
+        } => cortexmem::cli::run_search(query, limit, r#type, project),
+        Commands::Get { id } => cortexmem::cli::run_get(id),
+        Commands::Stats => cortexmem::cli::run_stats(),
+        Commands::Model { action } => match action {
+            ModelAction::Download => cortexmem::cli::run_model_download(),
+            ModelAction::Status => cortexmem::cli::run_model_status(),
+        },
+        Commands::Compact => cortexmem::cli::run_compact(),
     }
 }
