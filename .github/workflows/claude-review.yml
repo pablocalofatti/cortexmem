@@ -1,0 +1,83 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'minion-managed') &&
+      github.event.pull_request.user.login != 'github-actions[bot]'
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff and review with Claude
+        id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          DIFF=$(gh pr diff "$PR_NUMBER")
+
+          PROMPT="You are a senior Rust engineer reviewing a pull request. Review the following diff for:
+          1. Code quality and readability
+          2. Potential bugs or logic errors
+          3. Security vulnerabilities
+          4. Adherence to Rust best practices (ownership, error handling, idiomatic patterns)
+          5. Performance considerations
+          6. Suggestions for improvement
+
+          Be concise and actionable. Structure your review with clear sections.
+          At the end, state: VERDICT: APPROVE, COMMENT, or REQUEST_CHANGES
+
+          Diff:
+          ${DIFF}"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -n --arg prompt "$PROMPT" '{
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 1024,
+              messages: [{role: "user", content: $prompt}]
+            }')")
+
+          REVIEW_TEXT=$(echo "$RESPONSE" | jq -r '.content[0].text // "Claude review failed: " + (.error.message // "unknown error")')
+          VERDICT=$(echo "$REVIEW_TEXT" | grep -oP 'VERDICT:\s*\K\S+' | tail -1)
+
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "review<<REVIEW_EOF"
+            echo "$REVIEW_TEXT"
+            echo "REVIEW_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post review comment
+        env:
+          REVIEW_TEXT: ${{ steps.review.outputs.review }}
+        run: |
+          COMMENT="## Claude Code Review
+
+          ${REVIEW_TEXT}"
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+
+      - name: Request changes if critical issues found
+        if: steps.review.outputs.verdict == 'REQUEST_CHANGES'
+        run: |
+          gh pr review "$PR_NUMBER" \
+            --request-changes \
+            --body "Claude identified critical issues. See the review comment above."
