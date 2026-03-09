@@ -1,6 +1,6 @@
 [package]
 name = "cortexmem"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 license = "MIT"
 description = "Persistent vector memory for AI coding agents"
@@ -30,6 +30,18 @@ dialoguer = "0.11"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
 openssl = { version = "0.10", features = ["vendored"] }
+ratatui = "0.29"
+crossterm = "0.28"
+sqlx-core = { version = "0.8", default-features = false, features = ["chrono", "json"], optional = true }
+sqlx-postgres = { version = "0.8", default-features = false, features = ["chrono", "uuid", "json"], optional = true }
+jsonwebtoken = { version = "9", optional = true }
+argon2 = { version = "0.5", optional = true }
+uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.12", features = ["json"], optional = true }
+
+[features]
+default = []
+cloud = ["sqlx-core", "sqlx-postgres", "jsonwebtoken", "argon2", "reqwest"]
 
 [dev-dependencies]
 tempfile = "3"
@@ -107,6 +119,22 @@ path = "tests/integration/mcp_prompts_test.rs"
 [[test]]
 name = "http_test"
 path = "tests/integration/http_test.rs"
+
+[[test]]
+name = "sync_db_test"
+path = "tests/integration/sync_db_test.rs"
+
+[[test]]
+name = "mutation_capture_test"
+path = "tests/integration/mutation_capture_test.rs"
+
+[[test]]
+name = "git_sync_test"
+path = "tests/integration/git_sync_test.rs"
+
+[[test]]
+name = "cloud_auth_test"
+path = "tests/integration/cloud_auth_test.rs"
 
 [profile.release]
 lto = true

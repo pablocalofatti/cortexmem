@@ -1,5 +1,8 @@
+#[cfg(feature = "cloud")]
+pub mod cloud;
 pub mod export;
 pub mod setup;
+pub mod sync;
 
 use std::path::PathBuf;
 
@@ -9,17 +12,22 @@ use crate::db::Database;
 use crate::embed::EmbeddingManager;
 use crate::mcp::CortexMemServer;
 
-/// Resolve the default database path (~/.local/share/cortexmem/cortexmem.db on Linux,
+/// Resolve the database path. Respects `CORTEXMEM_DB` env var, falling back to
+/// platform default (~/.local/share/cortexmem/cortexmem.db on Linux,
 /// ~/Library/Application Support/cortexmem/cortexmem.db on macOS).
-fn db_path() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("cortexmem")
-        .join("cortexmem.db")
+pub fn db_path() -> PathBuf {
+    std::env::var("CORTEXMEM_DB")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::data_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("cortexmem")
+                .join("cortexmem.db")
+        })
 }
 
 /// Infer project name from the current working directory basename.
-fn detect_project() -> String {
+pub(crate) fn detect_project() -> String {
     std::env::current_dir()
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))

@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-09
+
+### Added
+
+**Cloud Sync (`--features cloud`)**
+- PostgreSQL-backed cloud server with Axum for multi-machine memory sharing
+- User authentication with Argon2 password hashing and JWT tokens
+- API key authentication for programmatic access
+- Project enrollment and per-project sync boundaries
+- Push/pull sync endpoints with server-side conflict resolution
+- Acknowledgment-based sync protocol ensuring at-least-once delivery
+- Client-side sync engine (`cortexmem cloud push` / `cortexmem cloud pull`)
+- 10 CLI subcommands under `cortexmem cloud`: `serve`, `register`, `login`, `create-api-key`, `enroll`, `push`, `pull`, `auto-sync`, `status`, `set-server`
+- All cloud dependencies behind `cloud` feature flag — zero overhead when unused
+- Mutation capture table for tracking local changes between syncs
+
+**Interactive TUI (`cortexmem tui`)**
+- Full terminal UI dashboard built with ratatui 0.29 and crossterm 0.28
+- 7 screens: Dashboard, Search Input, Search Results, Observation Detail, Timeline, Sessions List, Session Detail
+- Catppuccin Mocha color theme with 11 palette constants
+- Screen stack navigation with push/pop (Esc to go back)
+- Dashboard shows memory statistics: total count, by-tier breakdown, by-type breakdown
+- Search with live text input, cursor movement (Left/Right/Home/End), and navigable results
+- Observation detail view with scrollable content showing all fields
+- Timeline view for chronological exploration around a target observation
+- Sessions list and detail views for browsing session history
+- Vim-style keybindings (j/k) alongside arrow keys throughout
+
+**Git Sync (`cortexmem git-sync`)**
+- Git-based team sync for sharing memories without a cloud server
+- Chunk-based JSON export/import with content-hash dedup on import
+- 4 CLI subcommands: `init`, `run`, `status`, `auto`
+- `git-sync init` — initialize a sync repo (clone remote or init local)
+- `git-sync run` — single sync cycle: export, commit/push, pull, import
+- `git-sync status` — show sync state (last pushed/pulled seq, errors)
+- `git-sync auto` — run sync on a fixed interval (default 300s)
+- Sync state tracking in `sync_state` SQLite table
+
+**Cloud integration tests**
+- 4 integration tests for cloud auth: password hash/verify, JWT create/verify, invalid JWT rejection, wrong-secret rejection
+- CI workflow updated with cloud feature lint and test steps
+
+### Changed
+- Test suite expanded with cloud auth integration tests
+- CI pipeline now validates cloud feature compilation separately
+
 ## [1.1.0] - 2026-03-09
 
 ### Added
@@ -149,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2 unit tests for embedding pipeline
 - `Database::open_in_memory()` for all DB tests — no temp files
 
-[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pablocalofatti/cortexmem/releases/tag/v1.0.0

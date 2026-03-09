@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
 
+#[cfg(feature = "cloud")]
+use cortexmem::cli::cloud::CloudAction;
+
 #[derive(Parser)]
 #[command(
     name = "cortexmem",
@@ -96,6 +99,44 @@ enum Commands {
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
     },
+    /// Launch interactive TUI dashboard
+    Tui,
+    /// Git-based team sync
+    GitSync {
+        #[command(subcommand)]
+        action: GitSyncAction,
+    },
+    #[cfg(feature = "cloud")]
+    /// Cloud sync server and management
+    Cloud {
+        #[command(subcommand)]
+        action: CloudAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum GitSyncAction {
+    /// Initialize git sync repository
+    Init {
+        #[arg(long)]
+        repo: Option<String>,
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
+    },
+    /// Run a single sync cycle
+    Run {
+        #[arg(long)]
+        project: Option<String>,
+    },
+    /// Show sync status
+    Status,
+    /// Run auto-sync on an interval
+    Auto {
+        #[arg(long, default_value = "300")]
+        interval: u64,
+        #[arg(long)]
+        project: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -119,14 +160,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Mcp => {
             tracing::info!("MCP server starting...");
-            let db_path = std::env::var("CORTEXMEM_DB")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|_| {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| std::path::PathBuf::from("."))
-                        .join("cortexmem")
-                        .join("cortexmem.db")
-                });
+            let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             cortexmem::mcp::start_mcp_server(db_path.to_str().unwrap()).await
         }
@@ -163,14 +197,7 @@ async fn main() -> anyhow::Result<()> {
             cortexmem::cli::run_recent_prompts(project, limit)
         }
         Commands::Serve { port, host } => {
-            let db_path = std::env::var("CORTEXMEM_DB")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|_| {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| std::path::PathBuf::from("."))
-                        .join("cortexmem")
-                        .join("cortexmem.db")
-                });
+            let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             let db = cortexmem::db::Database::open(&db_path)?;
             let cache_dir = db_path.parent().unwrap().to_path_buf();
@@ -179,5 +206,28 @@ async fn main() -> anyhow::Result<()> {
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::http::start_http_server(server, &host, port).await
         }
+        Commands::Tui => {
+            let db_path = cortexmem::cli::db_path();
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+            let cache_dir = db_path.parent().unwrap().to_path_buf();
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let server =
+                std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
+            cortexmem::tui::run(server)?;
+            Ok(())
+        }
+        Commands::GitSync { action } => match action {
+            GitSyncAction::Init { repo, path } => {
+                cortexmem::cli::sync::run_sync_init(repo.as_deref(), path.as_deref())
+            }
+            GitSyncAction::Run { project } => cortexmem::cli::sync::run_sync(project.as_deref()),
+            GitSyncAction::Status => cortexmem::cli::sync::run_sync_status(),
+            GitSyncAction::Auto { interval, project } => {
+                cortexmem::cli::sync::run_sync_auto(interval, project.as_deref()).await
+            }
+        },
+        #[cfg(feature = "cloud")]
+        Commands::Cloud { action } => cortexmem::cli::cloud::run_cloud(action).await,
     }
 }
