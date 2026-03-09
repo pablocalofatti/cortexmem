@@ -1,4 +1,7 @@
+mod observations;
 mod schema;
+
+pub use observations::{NewObservation, Observation};
 
 use std::path::Path;
 use std::sync::Once;

@@ -34,6 +34,10 @@ tempfile = "3"
 name = "db_test"
 path = "tests/integration/db_test.rs"
 
+[[test]]
+name = "observations_test"
+path = "tests/integration/observations_test.rs"
+
 [profile.release]
 lto = true
 strip = true
