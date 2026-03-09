@@ -136,6 +136,14 @@ path = "tests/integration/git_sync_test.rs"
 name = "cloud_auth_test"
 path = "tests/integration/cloud_auth_test.rs"
 
+[[test]]
+name = "doctor_test"
+path = "tests/integration/doctor_test.rs"
+
+[[test]]
+name = "setup_test"
+path = "tests/integration/setup_test.rs"
+
 [profile.release]
 lto = true
 strip = true

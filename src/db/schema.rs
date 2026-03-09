@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rusqlite::Connection;
 
-const CURRENT_VERSION: i64 = 3;
+pub(crate) const CURRENT_VERSION: i64 = 3;
 
 pub fn migrate(conn: &Connection) -> Result<()> {
     let version = get_schema_version(conn);
