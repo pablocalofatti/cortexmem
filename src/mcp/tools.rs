@@ -220,36 +220,124 @@ impl CortexMemServer {
         name = "mem_search",
         description = "Search memory using hybrid FTS5 + vector similarity with RRF fusion. Returns compact results (id, title, type, concepts)."
     )]
-    async fn mem_search(&self, Parameters(_params): Parameters<MemSearchParams>) -> String {
-        // TODO: Task 11
-        "Not yet implemented".to_string()
+    async fn mem_search(&self, Parameters(params): Parameters<MemSearchParams>) -> String {
+        let results = self.call_search(
+            &params.query,
+            params.project.as_deref(),
+            params.obs_type.as_deref(),
+            params.scope.as_deref(),
+            params.limit.map(|l| l as usize),
+        );
+
+        if results.is_empty() {
+            return "No results found.".to_string();
+        }
+
+        let mut out = String::new();
+        for r in &results {
+            out.push_str(&format!(
+                "[{}] {} ({}){} — score: {:.4}\n",
+                r.id,
+                r.title,
+                r.obs_type,
+                r.concepts
+                    .as_ref()
+                    .map(|c| format!(" — {}", c.join(", ")))
+                    .unwrap_or_default(),
+                r.score,
+            ));
+        }
+        out
     }
 
     #[tool(
         name = "mem_get",
         description = "Get full observation detail by ID or multiple IDs. Returns all fields including content, facts, files."
     )]
-    async fn mem_get(&self, Parameters(_params): Parameters<MemGetParams>) -> String {
-        // TODO: Task 11
-        "Not yet implemented".to_string()
+    async fn mem_get(&self, Parameters(params): Parameters<MemGetParams>) -> String {
+        let ids = if let Some(id) = params.id {
+            vec![id]
+        } else if let Some(ids) = params.ids {
+            ids
+        } else {
+            return "Provide either 'id' or 'ids' parameter.".to_string();
+        };
+
+        match self.call_get_multiple(&ids) {
+            Ok(observations) => {
+                // Track access for each
+                for obs in &observations {
+                    let _ = self.track_access(obs.id);
+                }
+                if observations.is_empty() {
+                    return "No observations found.".to_string();
+                }
+                observations
+                    .iter()
+                    .map(|obs| protocol::format_full(obs))
+                    .collect::<Vec<_>>()
+                    .join("\n---\n\n")
+            }
+            Err(e) => format!("Error getting observations: {e}"),
+        }
     }
 
     #[tool(
         name = "mem_timeline",
         description = "Get chronological context around a target observation. Shows what was saved before and after."
     )]
-    async fn mem_timeline(&self, Parameters(_params): Parameters<MemTimelineParams>) -> String {
-        // TODO: Task 11
-        "Not yet implemented".to_string()
+    async fn mem_timeline(&self, Parameters(params): Parameters<MemTimelineParams>) -> String {
+        let window = params.window.unwrap_or(5);
+
+        // Need project context — get it from the observation
+        let mgr = self.memory.lock().unwrap();
+        let obs = match mgr.db().get_observation(params.id) {
+            Ok(Some(obs)) => obs,
+            Ok(None) => return format!("Observation {} not found.", params.id),
+            Err(e) => return format!("Error: {e}"),
+        };
+
+        match mgr.db().get_timeline(&obs.project, params.id, window) {
+            Ok(timeline) => {
+                if timeline.is_empty() {
+                    return "No timeline context found.".to_string();
+                }
+                protocol::format_compact(&timeline)
+            }
+            Err(e) => format!("Error getting timeline: {e}"),
+        }
     }
 
     #[tool(
         name = "mem_context",
         description = "Get recent observations from previous sessions for the current project. Use at session start for context recovery."
     )]
-    async fn mem_context(&self, Parameters(_params): Parameters<MemContextParams>) -> String {
-        // TODO: Task 11
-        "Not yet implemented".to_string()
+    async fn mem_context(&self, Parameters(params): Parameters<MemContextParams>) -> String {
+        let limit = 20i64;
+        match params.project {
+            Some(ref project) => {
+                match self.call_context(Some(project), limit) {
+                    Ok(observations) => {
+                        if observations.is_empty() {
+                            return "No previous context found.".to_string();
+                        }
+                        protocol::format_compact(&observations)
+                    }
+                    Err(e) => format!("Error getting context: {e}"),
+                }
+            }
+            None => {
+                match self.call_context(None, limit) {
+                    Ok(observations) => {
+                        if observations.is_empty() {
+                            return "No previous context found.".to_string();
+                        }
+                        protocol::format_compact(&observations)
+                    }
+                    Err(e) => format!("Error getting context: {e}"),
+                }
+            }
+        }
     }
 
     #[tool(
@@ -258,10 +346,34 @@ impl CortexMemServer {
     )]
     async fn mem_suggest_topic(
         &self,
-        Parameters(_params): Parameters<MemSuggestTopicParams>,
+        Parameters(params): Parameters<MemSuggestTopicParams>,
     ) -> String {
-        // TODO: Task 11
-        "Not yet implemented".to_string()
+        // For now, just list existing topic_keys — could add FTS-based matching later
+        let _ = (params.title, params.content); // acknowledge params
+        let mgr = self.memory.lock().unwrap();
+
+        // We need a project context — use current session's project or list all
+        match mgr.db().list_all_active_observations() {
+            Ok(observations) => {
+                let mut keys: Vec<String> = observations
+                    .iter()
+                    .filter_map(|obs| obs.topic_key.clone())
+                    .collect();
+                keys.sort();
+                keys.dedup();
+
+                if keys.is_empty() {
+                    return "No existing topic_keys found.".to_string();
+                }
+
+                let mut out = "Existing topic_keys:\n".to_string();
+                for key in &keys {
+                    out.push_str(&format!("  - {key}\n"));
+                }
+                out
+            }
+            Err(e) => format!("Error suggesting topics: {e}"),
+        }
     }
 
     // ── Lifecycle Tools ──────────────────────────────────────
@@ -418,5 +530,68 @@ impl CortexMemServer {
     pub fn call_get_session(&self, id: i64) -> Result<Option<Session>> {
         let mgr = self.memory.lock().unwrap();
         mgr.db().get_session(id)
+    }
+
+    pub fn call_get_multiple(&self, ids: &[i64]) -> Result<Vec<Observation>> {
+        let mgr = self.memory.lock().unwrap();
+        let mut results = Vec::with_capacity(ids.len());
+        for &id in ids {
+            if let Some(obs) = mgr.db().get_observation(id)? {
+                results.push(obs);
+            }
+        }
+        Ok(results)
+    }
+
+    pub fn call_get_and_track(&self, id: i64) -> Result<Option<Observation>> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().increment_access_count(id)?;
+        mgr.db().get_observation(id)
+    }
+
+    fn track_access(&self, id: i64) -> Result<()> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().increment_access_count(id)
+    }
+
+    pub fn call_search(
+        &self,
+        query: &str,
+        project: Option<&str>,
+        obs_type: Option<&str>,
+        scope: Option<&str>,
+        limit: Option<usize>,
+    ) -> Vec<crate::search::SearchResult> {
+        let mgr = self.memory.lock().unwrap();
+        let searcher = crate::search::HybridSearcher::new(mgr.db(), mgr.embed_mgr());
+        let params = crate::search::SearchParams {
+            query: query.into(),
+            project: project.map(String::from),
+            obs_type: obs_type.map(String::from),
+            scope: scope.map(String::from),
+            limit: limit.unwrap_or(20),
+        };
+        searcher.search(&params).unwrap_or_default()
+    }
+
+    pub fn call_timeline(&self, id: i64, window: Option<i64>, project: &str) -> Result<Vec<Observation>> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().get_timeline(project, id, window.unwrap_or(5))
+    }
+
+    pub fn call_context(&self, project: Option<&str>, limit: i64) -> Result<Vec<Observation>> {
+        let mgr = self.memory.lock().unwrap();
+        match project {
+            Some(p) => mgr.db().list_observations(p, limit),
+            None => {
+                let all = mgr.db().list_all_active_observations()?;
+                Ok(all.into_iter().take(limit as usize).collect())
+            }
+        }
+    }
+
+    pub fn call_suggest_topic(&self, project: &str) -> Result<Vec<String>> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().list_topic_keys(project)
     }
 }

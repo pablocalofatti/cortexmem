@@ -307,6 +307,57 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_timeline(
+        &self,
+        project: &str,
+        target_id: i64,
+        window: i64,
+    ) -> Result<Vec<Observation>> {
+        // Get observations around the target, ordered by created_at
+        let mut stmt = self.conn().prepare(
+            "SELECT id FROM observations
+             WHERE project = ?1 AND deleted_at IS NULL
+             ORDER BY created_at ASC",
+        )?;
+
+        let all_ids: Vec<i64> = stmt
+            .query_map(rusqlite::params![project], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Find the position of target_id
+        let pos = all_ids.iter().position(|&id| id == target_id);
+        let Some(pos) = pos else {
+            return Ok(vec![]);
+        };
+
+        let start = pos.saturating_sub(window as usize);
+        let end = (pos + window as usize + 1).min(all_ids.len());
+        let window_ids = &all_ids[start..end];
+
+        let mut observations = Vec::with_capacity(window_ids.len());
+        for &id in window_ids {
+            if let Some(obs) = self.get_observation(id)? {
+                observations.push(obs);
+            }
+        }
+
+        Ok(observations)
+    }
+
+    pub fn list_topic_keys(&self, project: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn().prepare(
+            "SELECT DISTINCT topic_key FROM observations
+             WHERE project = ?1 AND topic_key IS NOT NULL AND deleted_at IS NULL
+             ORDER BY topic_key",
+        )?;
+
+        let keys: Vec<String> = stmt
+            .query_map(rusqlite::params![project], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(keys)
+    }
+
     pub fn update_tier(&self, id: i64, tier: &str) -> Result<()> {
         self.conn().execute(
             "UPDATE observations SET tier = ?2 WHERE id = ?1",
