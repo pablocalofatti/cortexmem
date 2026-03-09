@@ -89,7 +89,10 @@ impl MemoryManager {
         };
 
         if !mgr.is_model_available() {
-            return false;
+            tracing::info!("Embedding model not loaded — downloading on first use...");
+            if mgr.download_model().is_err() {
+                return false;
+            }
         }
 
         let search_text = crate::embed::build_search_text(

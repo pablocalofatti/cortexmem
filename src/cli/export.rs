@@ -31,7 +31,7 @@ pub fn run_export(output: Option<PathBuf>, project: Option<String>) -> Result<()
         .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
 
     let export = ExportData {
-        version: "1.0".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         exported_at,
         project_filter: project,
         sessions,
