@@ -646,7 +646,13 @@ impl CortexMemServer {
             scope: scope.map(String::from),
             limit: limit.unwrap_or(20),
         };
-        searcher.search(&params).unwrap_or_default()
+        match searcher.search(&params) {
+            Ok(results) => results,
+            Err(e) => {
+                tracing::error!("Search failed: {e:#}");
+                vec![]
+            }
+        }
     }
 
     pub fn call_timeline(

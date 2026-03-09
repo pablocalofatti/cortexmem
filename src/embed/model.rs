@@ -84,7 +84,7 @@ impl EmbeddingManager {
     }
 
     fn load_model(cache_dir: &Path) -> Result<TextEmbedding> {
-        let options = TextInitOptions::new(EmbeddingModel::NomicEmbedTextV15)
+        let options = TextInitOptions::new(EmbeddingModel::AllMiniLML6V2)
             .with_cache_dir(cache_dir.join(MODEL_DIR_NAME))
             .with_show_download_progress(true);
 
