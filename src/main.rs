@@ -58,6 +58,13 @@ enum Commands {
         #[arg(long)]
         project: Option<String>,
     },
+    /// Import memories from a JSON export file
+    Import {
+        file: std::path::PathBuf,
+        /// Replace all existing data instead of merging
+        #[arg(long)]
+        replace: bool,
+    },
     /// Set up cortexmem for your AI agent (interactive wizard)
     Setup,
 }
@@ -115,6 +122,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Export { output, project } => {
             cortexmem::cli::export::run_export(output, project)
         }
+        Commands::Import { file, replace } => cortexmem::cli::export::run_import(file, replace),
         Commands::Setup => cortexmem::cli::setup::run_setup(),
     }
 }

@@ -304,7 +304,7 @@ impl CortexMemServer {
                 }
                 observations
                     .iter()
-                    .map(|obs| protocol::format_full(obs))
+                    .map(protocol::format_full)
                     .collect::<Vec<_>>()
                     .join("\n---\n\n")
             }
