@@ -21,6 +21,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,7 +32,7 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          review_comments: |
+          custom_instructions: |
             You are a senior Rust engineer. Focus on:
             1. Code quality, readability, and idiomatic Rust patterns
             2. Potential bugs, logic errors, or undefined behavior
