@@ -87,6 +87,10 @@ path = "tests/integration/mcp_lifecycle_test.rs"
 name = "topic_suggest_test"
 path = "tests/integration/topic_suggest_test.rs"
 
+[[test]]
+name = "export_test"
+path = "tests/integration/export_test.rs"
+
 [profile.release]
 lto = true
 strip = true

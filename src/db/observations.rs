@@ -1,5 +1,5 @@
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use super::Database;
@@ -18,7 +18,7 @@ pub struct NewObservation {
     pub session_id: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Observation {
     pub id: i64,
     pub session_id: Option<i64>,
@@ -457,6 +457,63 @@ impl Database {
 
     /// Backdate an observation's timestamps. Used for testing decay rules
     /// and manual time adjustments.
+    /// Import an observation, skipping if content_hash already exists.
+    /// Used by the import command for merge mode.
+    pub fn import_observation(&self, obs: &Observation) -> Result<bool> {
+        let exists: bool = self.conn().query_row(
+            "SELECT COUNT(*) > 0 FROM observations WHERE content_hash = ?1",
+            [&obs.content_hash],
+            |row| row.get(0),
+        )?;
+
+        if exists {
+            return Ok(false);
+        }
+
+        let concepts_json = vec_to_json(&obs.concepts);
+        let facts_json = vec_to_json(&obs.facts);
+        let files_json = vec_to_json(&obs.files);
+
+        self.conn().execute(
+            "INSERT INTO observations (
+                project, topic_key, type, title, content, concepts, facts, files,
+                scope, tier, access_count, revision_count, content_hash,
+                created_at, updated_at, deleted_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            rusqlite::params![
+                obs.project,
+                obs.topic_key,
+                obs.obs_type,
+                obs.title,
+                obs.content,
+                concepts_json,
+                facts_json,
+                files_json,
+                obs.scope,
+                obs.tier,
+                obs.access_count,
+                obs.revision_count,
+                obs.content_hash,
+                obs.created_at,
+                obs.updated_at,
+                obs.deleted_at,
+            ],
+        )?;
+
+        let id = self.conn().last_insert_rowid();
+        self.conn().execute(
+            "INSERT INTO observations_fts(rowid, title, content, concepts, facts, type, project)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![
+                id, obs.title, obs.content,
+                concepts_json, facts_json,
+                obs.obs_type, obs.project
+            ],
+        )?;
+
+        Ok(true)
+    }
+
     pub fn backdate_observation(&self, id: i64, days_ago: i64) -> Result<()> {
         let offset = format!("-{days_ago} days");
         self.conn().execute(
