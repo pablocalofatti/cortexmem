@@ -28,7 +28,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "6"
 dialoguer = "0.11"
 axum = "0.8"
-uuid = { version = "1", features = ["v4"] }
 tower-http = { version = "0.6", features = ["cors"] }
 openssl = { version = "0.10", features = ["vendored"] }
 

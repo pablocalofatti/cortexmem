@@ -130,12 +130,15 @@ pub fn migrate(conn: &Connection) -> Result<()> {
                 chunk_id    TEXT PRIMARY KEY,
                 imported_at TEXT DEFAULT (datetime('now'))
             );
+
+            CREATE INDEX IF NOT EXISTS idx_sync_mutations_unacked
+                ON sync_mutations(seq) WHERE acked_at IS NULL;
             ",
         )?;
 
         conn.execute(
-            "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?1)",
-            [CURRENT_VERSION.to_string()],
+            "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', '3')",
+            [],
         )?;
     }
 

@@ -1,3 +1,7 @@
+// Sync DB methods are currently used by integration tests and will be
+// wired into the mutation capture layer (Task 2) and sync engine (Task 6).
+#![allow(dead_code)]
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 

@@ -3,7 +3,9 @@ mod observations;
 mod prompts;
 mod schema;
 mod sessions;
-pub mod sync;
+mod sync;
+
+pub use sync::{SyncMutation, SyncState};
 mod vector;
 
 pub use fts::FtsResult;
