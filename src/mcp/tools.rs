@@ -10,8 +10,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::db::{Database, NewObservation, Observation, Session};
-use crate::embed::EmbeddingManager;
-use crate::memory::{DedupResult, MemoryManager, SaveResult};
+use crate::embed::{EmbeddingManager, ModelStatus};
+use crate::memory::{CompactionStats, DedupResult, MemoryManager, SaveResult};
 
 use super::protocol;
 
@@ -384,10 +384,19 @@ impl CortexMemServer {
     )]
     async fn mem_session_start(
         &self,
-        Parameters(_params): Parameters<MemSessionStartParams>,
+        Parameters(params): Parameters<MemSessionStartParams>,
     ) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+        match self.call_session_start(&params.project, &params.directory) {
+            Ok(session_id) => {
+                // Return recent context alongside session ID
+                let context = self.call_context(Some(&params.project), 10)
+                    .map(|obs| protocol::format_compact(&obs))
+                    .unwrap_or_default();
+
+                format!("Session {session_id} started for project '{}'.\n\n{context}", params.project)
+            }
+            Err(e) => format!("Error starting session: {e}"),
+        }
     }
 
     #[tool(
@@ -396,10 +405,23 @@ impl CortexMemServer {
     )]
     async fn mem_session_end(
         &self,
-        Parameters(_params): Parameters<MemSessionEndParams>,
+        Parameters(params): Parameters<MemSessionEndParams>,
     ) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+        let session_id = {
+            let guard = self.current_session.lock().unwrap();
+            *guard
+        };
+
+        match session_id {
+            Some(id) => match self.call_session_end(id, params.summary.as_deref()) {
+                Ok(()) => {
+                    *self.current_session.lock().unwrap() = None;
+                    format!("Session {id} ended.")
+                }
+                Err(e) => format!("Error ending session: {e}"),
+            },
+            None => "No active session to end.".to_string(),
+        }
     }
 
     // ── Admin Tools ──────────────────────────────────────────
@@ -408,27 +430,52 @@ impl CortexMemServer {
         name = "mem_delete",
         description = "Soft-delete an observation by ID (sets deleted_at, recoverable)."
     )]
-    async fn mem_delete(&self, Parameters(_params): Parameters<MemDeleteParams>) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+    async fn mem_delete(&self, Parameters(params): Parameters<MemDeleteParams>) -> String {
+        match self.call_delete(params.id) {
+            Ok(()) => format!("Observation {} soft-deleted.", params.id),
+            Err(e) => format!("Error deleting observation: {e}"),
+        }
     }
 
     #[tool(
         name = "mem_stats",
         description = "Show memory statistics: counts by type/tier, database size, embedding model status."
     )]
-    async fn mem_stats(&self, Parameters(_params): Parameters<MemStatsParams>) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+    async fn mem_stats(&self, Parameters(params): Parameters<MemStatsParams>) -> String {
+        match self.call_stats(params.project.as_deref()) {
+            Ok(stats) => {
+                let model_status = {
+                    let mgr = self.memory.lock().unwrap();
+                    match mgr.embed_mgr() {
+                        Some(e) => match e.model_status() {
+                            ModelStatus::Ready => "ready",
+                            ModelStatus::NotDownloaded => "not downloaded",
+                        },
+                        None => "disabled",
+                    }
+                };
+
+                protocol::format_stats(
+                    params.project.as_deref().unwrap_or("all"),
+                    stats.total,
+                    &stats.by_tier,
+                    &stats.by_type,
+                    model_status,
+                )
+            }
+            Err(e) => format!("Error getting stats: {e}"),
+        }
     }
 
     #[tool(
         name = "mem_compact",
         description = "Run decay cycle: promote frequently accessed observations, archive stale ones. Returns stats."
     )]
-    async fn mem_compact(&self, Parameters(_params): Parameters<MemCompactParams>) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+    async fn mem_compact(&self, Parameters(params): Parameters<MemCompactParams>) -> String {
+        match self.call_compact(params.project.as_deref()) {
+            Ok(stats) => protocol::format_compaction(&stats),
+            Err(e) => format!("Error running compaction: {e}"),
+        }
     }
 
     #[tool(
@@ -436,8 +483,20 @@ impl CortexMemServer {
         description = "Check or download the embedding model. Shows model status and triggers download if needed."
     )]
     async fn mem_model(&self, Parameters(_params): Parameters<MemModelParams>) -> String {
-        // TODO: Task 12
-        "Not yet implemented".to_string()
+        let mgr = self.memory.lock().unwrap();
+        match mgr.embed_mgr() {
+            Some(e) => match e.model_status() {
+                ModelStatus::Ready => "Embedding model: ready (all-MiniLM-L6-v2)".to_string(),
+                ModelStatus::NotDownloaded => {
+                    drop(mgr);
+                    match self.call_download_model() {
+                        Ok(()) => "Embedding model downloaded and ready.".to_string(),
+                        Err(e) => format!("Error downloading model: {e}"),
+                    }
+                }
+            },
+            None => "Embedding model: disabled (no cache directory configured)".to_string(),
+        }
     }
 }
 
@@ -594,4 +653,53 @@ impl CortexMemServer {
         let mgr = self.memory.lock().unwrap();
         mgr.db().list_topic_keys(project)
     }
+
+    // ── Lifecycle operations ─────────────────────────────────
+
+    pub fn call_session_end(&self, session_id: i64, summary: Option<&str>) -> Result<()> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().end_session(session_id, summary)
+    }
+
+    pub fn call_delete(&self, id: i64) -> Result<()> {
+        let mgr = self.memory.lock().unwrap();
+        mgr.db().soft_delete(id)?;
+        mgr.db().remove_from_fts(id).ok();
+        Ok(())
+    }
+
+    pub fn call_stats(&self, project: Option<&str>) -> Result<StatsResult> {
+        let mgr = self.memory.lock().unwrap();
+        let total = mgr.db().count_active(project)?;
+        let by_tier = mgr.db().count_by_tier(project)?;
+        let by_type = mgr.db().count_by_type(project)?;
+        Ok(StatsResult { total, by_tier, by_type })
+    }
+
+    pub fn call_compact(&self, project: Option<&str>) -> Result<CompactionStats> {
+        let mgr = self.memory.lock().unwrap();
+        crate::memory::run_compaction(mgr.db(), project)
+    }
+
+    fn call_download_model(&self) -> Result<()> {
+        let mgr = self.memory.lock().unwrap();
+        match mgr.embed_mgr() {
+            Some(e) => e.download_model(),
+            None => Err(anyhow::anyhow!("No embedding manager configured")),
+        }
+    }
+
+    /// Expose the memory manager lock for testing (e.g., backdating observations).
+    pub fn memory_lock(&self) -> std::sync::MutexGuard<'_, MemoryManager> {
+        self.memory.lock().unwrap()
+    }
+}
+
+// ── Stats Result ─────────────────────────────────────────────────
+
+#[derive(Debug)]
+pub struct StatsResult {
+    pub total: usize,
+    pub by_tier: Vec<(String, i64)>,
+    pub by_type: Vec<(String, i64)>,
 }

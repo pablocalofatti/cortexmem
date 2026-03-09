@@ -366,6 +366,63 @@ impl Database {
         Ok(())
     }
 
+    pub fn count_by_tier(&self, project: Option<&str>) -> Result<Vec<(String, i64)>> {
+        let (sql, params): (&str, Vec<Box<dyn rusqlite::types::ToSql>>) = match project {
+            Some(p) => (
+                "SELECT tier, COUNT(*) FROM observations WHERE deleted_at IS NULL AND project = ?1 GROUP BY tier ORDER BY tier",
+                vec![Box::new(p.to_string())],
+            ),
+            None => (
+                "SELECT tier, COUNT(*) FROM observations WHERE deleted_at IS NULL GROUP BY tier ORDER BY tier",
+                vec![],
+            ),
+        };
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let mut stmt = self.conn().prepare(sql)?;
+        let rows = stmt
+            .query_map(param_refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    pub fn count_by_type(&self, project: Option<&str>) -> Result<Vec<(String, i64)>> {
+        let (sql, params): (&str, Vec<Box<dyn rusqlite::types::ToSql>>) = match project {
+            Some(p) => (
+                "SELECT type, COUNT(*) FROM observations WHERE deleted_at IS NULL AND project = ?1 GROUP BY type ORDER BY type",
+                vec![Box::new(p.to_string())],
+            ),
+            None => (
+                "SELECT type, COUNT(*) FROM observations WHERE deleted_at IS NULL GROUP BY type ORDER BY type",
+                vec![],
+            ),
+        };
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let mut stmt = self.conn().prepare(sql)?;
+        let rows = stmt
+            .query_map(param_refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    pub fn count_active(&self, project: Option<&str>) -> Result<usize> {
+        let (sql, params): (&str, Vec<Box<dyn rusqlite::types::ToSql>>) = match project {
+            Some(p) => (
+                "SELECT COUNT(*) FROM observations WHERE deleted_at IS NULL AND project = ?1",
+                vec![Box::new(p.to_string())],
+            ),
+            None => (
+                "SELECT COUNT(*) FROM observations WHERE deleted_at IS NULL",
+                vec![],
+            ),
+        };
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let count: i64 = self.conn().query_row(sql, param_refs.as_slice(), |row| row.get(0))?;
+        Ok(count as usize)
+    }
+
     /// Backdate an observation's timestamps. Used for testing decay rules
     /// and manual time adjustments.
     pub fn backdate_observation(&self, id: i64, days_ago: i64) -> Result<()> {

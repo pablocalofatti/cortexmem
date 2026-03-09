@@ -78,6 +78,10 @@ path = "tests/integration/mcp_write_test.rs"
 name = "mcp_read_test"
 path = "tests/integration/mcp_read_test.rs"
 
+[[test]]
+name = "mcp_lifecycle_test"
+path = "tests/integration/mcp_lifecycle_test.rs"
+
 [profile.release]
 lto = true
 strip = true
