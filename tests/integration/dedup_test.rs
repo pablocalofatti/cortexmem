@@ -45,7 +45,10 @@ fn should_upsert_on_topic_key_match() {
 
     obs.content = "Updated: Using OAuth2 + JWT".into();
     let result2 = mgr.save_observation(&obs).unwrap();
-    assert!(matches!(result2.dedup_status, DedupResult::TopicKeyUpsert(_)));
+    assert!(matches!(
+        result2.dedup_status,
+        DedupResult::TopicKeyUpsert(_)
+    ));
     assert_eq!(result1.id, result2.id);
 }
 

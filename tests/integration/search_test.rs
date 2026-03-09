@@ -29,8 +29,14 @@ fn insert_and_index(db: &Database, obs: &NewObservation) -> i64 {
 #[test]
 fn should_search_fts_only_when_no_model() {
     let db = test_db();
-    insert_and_index(&db, &make_obs("Auth middleware", "JWT authentication tokens", "decision"));
-    insert_and_index(&db, &make_obs("DB config", "PostgreSQL connection pooling", "discovery"));
+    insert_and_index(
+        &db,
+        &make_obs("Auth middleware", "JWT authentication tokens", "decision"),
+    );
+    insert_and_index(
+        &db,
+        &make_obs("DB config", "PostgreSQL connection pooling", "discovery"),
+    );
 
     let searcher = HybridSearcher::new(&db, None);
     let params = SearchParams {
@@ -94,8 +100,14 @@ fn should_filter_by_project() {
 #[test]
 fn should_filter_by_type() {
     let db = test_db();
-    insert_and_index(&db, &make_obs("Auth decision", "JWT tokens chosen", "decision"));
-    insert_and_index(&db, &make_obs("Auth discovery", "Found OAuth library", "discovery"));
+    insert_and_index(
+        &db,
+        &make_obs("Auth decision", "JWT tokens chosen", "decision"),
+    );
+    insert_and_index(
+        &db,
+        &make_obs("Auth discovery", "Found OAuth library", "discovery"),
+    );
 
     let searcher = HybridSearcher::new(&db, None);
     let params = SearchParams {

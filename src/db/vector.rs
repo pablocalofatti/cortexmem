@@ -19,10 +19,8 @@ impl Database {
     }
 
     pub fn delete_vector(&self, rowid: i64) -> Result<()> {
-        self.conn().execute(
-            "DELETE FROM vec_observations WHERE rowid = ?1",
-            [rowid],
-        )?;
+        self.conn()
+            .execute("DELETE FROM vec_observations WHERE rowid = ?1", [rowid])?;
         Ok(())
     }
 
@@ -50,8 +48,5 @@ impl Database {
 }
 
 fn embedding_to_blob(embedding: &[f32]) -> Vec<u8> {
-    embedding
-        .iter()
-        .flat_map(|f| f.to_le_bytes())
-        .collect()
+    embedding.iter().flat_map(|f| f.to_le_bytes()).collect()
 }

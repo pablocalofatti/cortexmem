@@ -184,7 +184,9 @@ fn mem_session_summary_should_persist() {
     let server = test_server();
 
     // Start a session first
-    let session_id = server.call_session_start("testproject", "/tmp/test").unwrap();
+    let session_id = server
+        .call_session_start("testproject", "/tmp/test")
+        .unwrap();
 
     // Save summary
     server

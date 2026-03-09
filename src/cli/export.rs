@@ -26,9 +26,9 @@ pub fn run_export(output: Option<PathBuf>, project: Option<String>) -> Result<()
     let sessions = db.list_all_sessions_for_export(project.as_deref())?;
     let observations = db.list_all_observations_for_export(project.as_deref())?;
 
-    let exported_at: String =
-        db.conn()
-            .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
+    let exported_at: String = db
+        .conn()
+        .query_row("SELECT datetime('now')", [], |row| row.get(0))?;
 
     let export = ExportData {
         version: "1.0".into(),
@@ -54,8 +54,7 @@ pub fn run_export(output: Option<PathBuf>, project: Option<String>) -> Result<()
 pub fn run_import(file: PathBuf, replace: bool) -> Result<()> {
     let contents = std::fs::read_to_string(&file)
         .with_context(|| format!("Could not read {}", file.display()))?;
-    let data: ExportData =
-        serde_json::from_str(&contents).context("Invalid export file format")?;
+    let data: ExportData = serde_json::from_str(&contents).context("Invalid export file format")?;
 
     let server = open_server()?;
     let mgr = server.memory_lock();

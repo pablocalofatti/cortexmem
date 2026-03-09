@@ -39,7 +39,13 @@ fn mem_search_should_filter_by_type() {
     save_obs(&server, "Auth decision made", "decision");
     save_obs(&server, "Auth pattern found", "pattern");
 
-    let results = server.call_search("auth", Some("testproject"), Some("decision"), None, Some(10));
+    let results = server.call_search(
+        "auth",
+        Some("testproject"),
+        Some("decision"),
+        None,
+        Some(10),
+    );
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].obs_type, "decision");
 }
@@ -74,7 +80,9 @@ fn mem_timeline_should_return_nearby_observations() {
     save_obs(&server, "After 1", "decision");
     save_obs(&server, "After 2", "decision");
 
-    let timeline = server.call_timeline(target_id, Some(2), "testproject").unwrap();
+    let timeline = server
+        .call_timeline(target_id, Some(2), "testproject")
+        .unwrap();
     assert!(timeline.len() >= 3); // at least the target + some neighbors
 }
 

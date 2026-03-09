@@ -69,10 +69,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn list_all_sessions_for_export(
-        &self,
-        project: Option<&str>,
-    ) -> Result<Vec<Session>> {
+    pub fn list_all_sessions_for_export(&self, project: Option<&str>) -> Result<Vec<Session>> {
         match project {
             Some(p) => {
                 let mut stmt = self.conn().prepare(

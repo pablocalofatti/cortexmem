@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "cortexmem", version, about = "Persistent vector memory for AI coding agents")]
+#[command(
+    name = "cortexmem",
+    version,
+    about = "Persistent vector memory for AI coding agents"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -39,9 +43,7 @@ enum Commands {
         project: Option<String>,
     },
     /// Get full observation by ID
-    Get {
-        id: i64,
-    },
+    Get { id: i64 },
     /// Show database statistics
     Stats,
     /// Manage embedding model
@@ -119,9 +121,7 @@ async fn main() -> anyhow::Result<()> {
             ModelAction::Status => cortexmem::cli::run_model_status(),
         },
         Commands::Compact => cortexmem::cli::run_compact(),
-        Commands::Export { output, project } => {
-            cortexmem::cli::export::run_export(output, project)
-        }
+        Commands::Export { output, project } => cortexmem::cli::export::run_export(output, project),
         Commands::Import { file, replace } => cortexmem::cli::export::run_import(file, replace),
         Commands::Setup => cortexmem::cli::setup::run_setup(),
     }

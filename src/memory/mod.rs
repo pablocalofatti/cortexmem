@@ -2,7 +2,7 @@ mod compact;
 mod decay;
 mod dedup;
 
-pub use compact::{run_compaction, CompactionStats};
+pub use compact::{CompactionStats, run_compaction};
 pub use dedup::DedupResult;
 
 use anyhow::Result;

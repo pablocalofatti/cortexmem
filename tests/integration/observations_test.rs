@@ -34,7 +34,10 @@ fn should_get_observation_by_id() {
 
     let fetched = db.get_observation(id).unwrap().unwrap();
     assert_eq!(fetched.title, "Auth decision");
-    assert_eq!(fetched.content, "Chose JWT over sessions for stateless auth");
+    assert_eq!(
+        fetched.content,
+        "Chose JWT over sessions for stateless auth"
+    );
     assert_eq!(fetched.obs_type, "decision");
     assert_eq!(fetched.project, "myproject");
     assert_eq!(fetched.concepts, Some(vec!["auth".into(), "jwt".into()]));
@@ -112,9 +115,7 @@ fn should_find_by_content_hash_within_window() {
     let id = db.insert_observation(&obs).unwrap();
 
     let original = db.get_observation(id).unwrap().unwrap();
-    let found = db
-        .find_by_content_hash(&original.content_hash, 15)
-        .unwrap();
+    let found = db.find_by_content_hash(&original.content_hash, 15).unwrap();
     assert!(found.is_some());
     assert_eq!(found.unwrap().id, id);
 }

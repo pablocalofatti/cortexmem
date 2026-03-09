@@ -33,8 +33,7 @@ fn should_build_search_text_with_empty_arrays() {
 #[test]
 #[ignore]
 fn should_generate_embedding_with_correct_dimensions() {
-    let manager =
-        EmbeddingManager::new_with_download("$TMPDIR/cortexmem-test-models").unwrap();
+    let manager = EmbeddingManager::new_with_download("$TMPDIR/cortexmem-test-models").unwrap();
     let embedding = manager.embed("authentication middleware").unwrap();
     assert_eq!(embedding.len(), 384);
 }

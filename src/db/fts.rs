@@ -39,9 +39,7 @@ impl Database {
     ) -> Result<Vec<FtsResult>> {
         // Build FTS5 query — quote project to handle special chars (hyphens etc.)
         let fts_query = if let Some(proj) = project {
-            format!(
-                "({{title content concepts facts}}: {query}) AND project:\"{proj}\""
-            )
+            format!("({{title content concepts facts}}: {query}) AND project:\"{proj}\"")
         } else {
             format!("{{title content concepts facts}}: {query}")
         };

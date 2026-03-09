@@ -50,18 +50,13 @@ pub fn run_save(
     let project = detect_project();
 
     let result = server.call_save(
-        &project,
-        &title,
-        &content,
-        &obs_type,
-        concepts,
-        facts,
-        files,
-        topic_key,
-        None,
+        &project, &title, &content, &obs_type, concepts, facts, files, topic_key, None,
     )?;
 
-    println!("Saved observation id={} (embedded={})", result.id, result.was_embedded);
+    println!(
+        "Saved observation id={} (embedded={})",
+        result.id, result.was_embedded
+    );
     Ok(())
 }
 
@@ -101,7 +96,10 @@ pub fn run_get(id: i64) -> Result<()> {
     match server.call_get(id)? {
         Some(obs) => {
             println!("# {} (id: {})", obs.title, obs.id);
-            println!("Type: {} | Tier: {} | Scope: {}", obs.obs_type, obs.tier, obs.scope);
+            println!(
+                "Type: {} | Tier: {} | Scope: {}",
+                obs.obs_type, obs.tier, obs.scope
+            );
             if let Some(ref concepts) = obs.concepts
                 && !concepts.is_empty()
             {
@@ -112,7 +110,10 @@ pub fn run_get(id: i64) -> Result<()> {
             {
                 println!("Facts: {}", facts.join("; "));
             }
-            println!("Accesses: {} | Revisions: {}", obs.access_count, obs.revision_count);
+            println!(
+                "Accesses: {} | Revisions: {}",
+                obs.access_count, obs.revision_count
+            );
             println!("Created: {} | Updated: {}", obs.created_at, obs.updated_at);
             println!("\n{}", obs.content);
         }

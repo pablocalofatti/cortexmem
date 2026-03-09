@@ -41,11 +41,9 @@ impl<'a> HybridSearcher<'a> {
 
     pub fn search(&self, params: &SearchParams) -> Result<Vec<SearchResult>> {
         // Step 1: FTS5 search
-        let fts_results = self.db.search_fts(
-            &params.query,
-            params.project.as_deref(),
-            FTS_FETCH_LIMIT,
-        )?;
+        let fts_results =
+            self.db
+                .search_fts(&params.query, params.project.as_deref(), FTS_FETCH_LIMIT)?;
 
         let fts_ranks: Vec<(i64, usize)> = fts_results
             .iter()
@@ -127,7 +125,11 @@ impl<'a> HybridSearcher<'a> {
         }
 
         // Re-sort by final score after boosting
-        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(results)
     }
@@ -140,8 +142,7 @@ fn apply_boosts(rrf_score: f64, updated_at: &str, access_count: i64) -> f64 {
 }
 
 fn compute_recency_factor(updated_at: &str) -> f64 {
-    let Ok(updated) = chrono::NaiveDateTime::parse_from_str(updated_at, "%Y-%m-%d %H:%M:%S")
-    else {
+    let Ok(updated) = chrono::NaiveDateTime::parse_from_str(updated_at, "%Y-%m-%d %H:%M:%S") else {
         return 1.0;
     };
 

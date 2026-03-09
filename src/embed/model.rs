@@ -62,9 +62,9 @@ impl EmbeddingManager {
 
     pub fn embed(&self, text: &str) -> Result<Vec<f32>> {
         let mut guard = self.model.lock().unwrap_or_else(|e| e.into_inner());
-        let model = guard
-            .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("Embedding model not downloaded. Run `cortexmem model download` first."))?;
+        let model = guard.as_mut().ok_or_else(|| {
+            anyhow::anyhow!("Embedding model not downloaded. Run `cortexmem model download` first.")
+        })?;
 
         let embeddings = model.embed(vec![text], None)?;
         embeddings

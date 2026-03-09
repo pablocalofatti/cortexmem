@@ -6,7 +6,12 @@ fn should_list_14_tools() {
     let db = Database::open_in_memory().unwrap();
     let server = CortexMemServer::new(db, None);
     let tools = server.list_tools();
-    assert_eq!(tools.len(), 14, "Expected 14 MCP tools, got {}", tools.len());
+    assert_eq!(
+        tools.len(),
+        14,
+        "Expected 14 MCP tools, got {}",
+        tools.len()
+    );
 }
 
 #[test]

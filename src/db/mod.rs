@@ -13,8 +13,8 @@ use std::path::Path;
 use std::sync::Once;
 
 use anyhow::Result;
-use rusqlite::ffi::sqlite3_auto_extension;
 use rusqlite::Connection;
+use rusqlite::ffi::sqlite3_auto_extension;
 
 static VEC_INIT: Once = Once::new();
 
@@ -79,9 +79,9 @@ impl Database {
     }
 
     pub fn has_vec_extension(&self) -> Result<bool> {
-        let version: String =
-            self.conn
-                .query_row("SELECT vec_version()", [], |row| row.get(0))?;
+        let version: String = self
+            .conn
+            .query_row("SELECT vec_version()", [], |row| row.get(0))?;
         Ok(!version.is_empty())
     }
 

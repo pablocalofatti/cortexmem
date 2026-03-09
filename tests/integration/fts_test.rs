@@ -31,7 +31,9 @@ fn should_index_observation_in_fts5() {
         .unwrap();
     db.sync_observation_to_fts(id).unwrap();
 
-    let results = db.search_fts("authentication", Some("myproject"), 10).unwrap();
+    let results = db
+        .search_fts("authentication", Some("myproject"), 10)
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].rowid, id);
 }
@@ -84,7 +86,9 @@ fn should_rank_by_bm25() {
         .unwrap();
     db.sync_observation_to_fts(id3).unwrap();
 
-    let results = db.search_fts("authentication", Some("myproject"), 10).unwrap();
+    let results = db
+        .search_fts("authentication", Some("myproject"), 10)
+        .unwrap();
     assert!(!results.is_empty());
     // The auth observation should rank first (most relevant)
     assert_eq!(results[0].rowid, id2);
@@ -123,12 +127,18 @@ fn should_filter_by_project() {
     let id1 = db.insert_observation(&obs1).unwrap();
     db.sync_observation_to_fts(id1).unwrap();
 
-    let mut obs2 = make_obs("Other concept", "Authentication in other project", "pattern");
+    let mut obs2 = make_obs(
+        "Other concept",
+        "Authentication in other project",
+        "pattern",
+    );
     obs2.project = "project-b".into();
     let id2 = db.insert_observation(&obs2).unwrap();
     db.sync_observation_to_fts(id2).unwrap();
 
-    let results = db.search_fts("authentication", Some("project-a"), 10).unwrap();
+    let results = db
+        .search_fts("authentication", Some("project-a"), 10)
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].rowid, id1);
 }

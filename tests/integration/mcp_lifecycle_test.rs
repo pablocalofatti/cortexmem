@@ -26,7 +26,9 @@ fn save_obs(server: &CortexMemServer, title: &str, obs_type: &str) -> i64 {
 #[test]
 fn mem_session_start_should_create_session_and_return_id() {
     let server = test_server();
-    let session_id = server.call_session_start("testproject", "/tmp/test").unwrap();
+    let session_id = server
+        .call_session_start("testproject", "/tmp/test")
+        .unwrap();
     assert!(session_id > 0);
 
     let session = server.call_get_session(session_id).unwrap().unwrap();
@@ -38,8 +40,12 @@ fn mem_session_start_should_create_session_and_return_id() {
 #[test]
 fn mem_session_end_should_close_session() {
     let server = test_server();
-    let session_id = server.call_session_start("testproject", "/tmp/test").unwrap();
-    server.call_session_end(session_id, Some("Great session")).unwrap();
+    let session_id = server
+        .call_session_start("testproject", "/tmp/test")
+        .unwrap();
+    server
+        .call_session_end(session_id, Some("Great session"))
+        .unwrap();
 
     let session = server.call_get_session(session_id).unwrap().unwrap();
     assert!(session.ended_at.is_some());
@@ -70,7 +76,12 @@ fn mem_stats_should_return_counts() {
 
     let stats = server.call_stats(Some("testproject")).unwrap();
     assert_eq!(stats.total, 3);
-    assert!(stats.by_type.iter().any(|(t, c)| t == "decision" && *c == 2));
+    assert!(
+        stats
+            .by_type
+            .iter()
+            .any(|(t, c)| t == "decision" && *c == 2)
+    );
     assert!(stats.by_type.iter().any(|(t, c)| t == "pattern" && *c == 1));
 }
 

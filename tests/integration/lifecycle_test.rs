@@ -1,5 +1,5 @@
 use cortexmem::db::{Database, NewObservation};
-use cortexmem::memory::{run_compaction, MemoryManager};
+use cortexmem::memory::{MemoryManager, run_compaction};
 
 fn test_db() -> Database {
     Database::open_in_memory().unwrap()

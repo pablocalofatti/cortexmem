@@ -43,7 +43,10 @@ impl Agent {
             Agent::ClaudeCode => home.join(".claude").join("settings.json"),
             Agent::OpenCode => home.join(".config").join("opencode").join("config.json"),
             Agent::Cursor => home.join(".cursor").join("mcp.json"),
-            Agent::Windsurf => home.join(".codeium").join("windsurf").join("mcp_config.json"),
+            Agent::Windsurf => home
+                .join(".codeium")
+                .join("windsurf")
+                .join("mcp_config.json"),
             Agent::VsCode => std::env::current_dir()
                 .unwrap_or_default()
                 .join(".vscode")
@@ -66,7 +69,9 @@ fn mcp_config_value() -> serde_json::Value {
 }
 
 fn write_mcp_config(agent: Agent) -> Result<()> {
-    let path = agent.config_path().context("Could not determine home directory")?;
+    let path = agent
+        .config_path()
+        .context("Could not determine home directory")?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -125,12 +130,19 @@ fn install_claude_plugin() -> Result<()> {
     std::fs::create_dir_all(&scripts_dir)?;
     std::fs::write(scripts_dir.join("session-start.sh"), session_start)?;
     std::fs::write(scripts_dir.join("session-end.sh"), session_end)?;
-    std::fs::write(scripts_dir.join("compaction-recovery.sh"), compaction_recovery)?;
+    std::fs::write(
+        scripts_dir.join("compaction-recovery.sh"),
+        compaction_recovery,
+    )?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        for script in &["session-start.sh", "session-end.sh", "compaction-recovery.sh"] {
+        for script in &[
+            "session-start.sh",
+            "session-end.sh",
+            "compaction-recovery.sh",
+        ] {
             let path = scripts_dir.join(script);
             let mut perms = std::fs::metadata(&path)?.permissions();
             perms.set_mode(0o755);
@@ -142,7 +154,10 @@ fn install_claude_plugin() -> Result<()> {
     let skill_dir = claude_dir.join("skills").join("cortexmem");
     std::fs::create_dir_all(&skill_dir)?;
     std::fs::write(skill_dir.join("SKILL.md"), skill_md)?;
-    println!("  Memory Protocol skill installed to {}", skill_dir.display());
+    println!(
+        "  Memory Protocol skill installed to {}",
+        skill_dir.display()
+    );
 
     Ok(())
 }

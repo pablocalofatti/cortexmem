@@ -2,12 +2,7 @@ use anyhow::Result;
 
 use super::EmbeddingManager;
 
-pub fn build_search_text(
-    title: &str,
-    content: &str,
-    concepts: &[&str],
-    facts: &[&str],
-) -> String {
+pub fn build_search_text(title: &str, content: &str, concepts: &[&str], facts: &[&str]) -> String {
     let mut parts = vec![title.to_string(), content.to_string()];
 
     if !concepts.is_empty() {

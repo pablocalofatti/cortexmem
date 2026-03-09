@@ -2,9 +2,10 @@ use std::sync::Mutex;
 
 use anyhow::Result;
 use rmcp::{
+    ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::ServerInfo,
-    tool, tool_handler, tool_router, ServerHandler,
+    tool, tool_handler, tool_router,
 };
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -149,7 +150,13 @@ fn generate_topic_key(obs_type: &str, title: &str) -> String {
     let slug: String = title
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == ' ' { c } else { ' ' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == ' ' {
+                c
+            } else {
+                ' '
+            }
+        })
         .collect::<String>()
         .split_whitespace()
         .take(4)
@@ -202,7 +209,10 @@ impl CortexMemServer {
                     DedupResult::HashMatch(_) => "duplicate detected (skipped)",
                     DedupResult::TopicKeyUpsert(_) => "updated (topic_key upsert)",
                 };
-                format!("Observation {}: id={}, embedded={}", status, result.id, result.was_embedded)
+                format!(
+                    "Observation {}: id={}, embedded={}",
+                    status, result.id, result.was_embedded
+                )
             }
             Err(e) => format!("Error saving observation: {e}"),
         }
@@ -345,28 +355,24 @@ impl CortexMemServer {
     async fn mem_context(&self, Parameters(params): Parameters<MemContextParams>) -> String {
         let limit = 20i64;
         match params.project {
-            Some(ref project) => {
-                match self.call_context(Some(project), limit) {
-                    Ok(observations) => {
-                        if observations.is_empty() {
-                            return "No previous context found.".to_string();
-                        }
-                        protocol::format_compact(&observations)
+            Some(ref project) => match self.call_context(Some(project), limit) {
+                Ok(observations) => {
+                    if observations.is_empty() {
+                        return "No previous context found.".to_string();
                     }
-                    Err(e) => format!("Error getting context: {e}"),
+                    protocol::format_compact(&observations)
                 }
-            }
-            None => {
-                match self.call_context(None, limit) {
-                    Ok(observations) => {
-                        if observations.is_empty() {
-                            return "No previous context found.".to_string();
-                        }
-                        protocol::format_compact(&observations)
+                Err(e) => format!("Error getting context: {e}"),
+            },
+            None => match self.call_context(None, limit) {
+                Ok(observations) => {
+                    if observations.is_empty() {
+                        return "No previous context found.".to_string();
                     }
-                    Err(e) => format!("Error getting context: {e}"),
+                    protocol::format_compact(&observations)
                 }
-            }
+                Err(e) => format!("Error getting context: {e}"),
+            },
         }
     }
 
@@ -395,11 +401,15 @@ impl CortexMemServer {
         match self.call_session_start(&params.project, &params.directory) {
             Ok(session_id) => {
                 // Return recent context alongside session ID
-                let context = self.call_context(Some(&params.project), 10)
+                let context = self
+                    .call_context(Some(&params.project), 10)
                     .map(|obs| protocol::format_compact(&obs))
                     .unwrap_or_default();
 
-                format!("Session {session_id} started for project '{}'.\n\n{context}", params.project)
+                format!(
+                    "Session {session_id} started for project '{}'.\n\n{context}",
+                    params.project
+                )
             }
             Err(e) => format!("Error starting session: {e}"),
         }
@@ -409,10 +419,7 @@ impl CortexMemServer {
         name = "mem_session_end",
         description = "End the current session. Optionally stores a session summary and triggers decay cycle."
     )]
-    async fn mem_session_end(
-        &self,
-        Parameters(params): Parameters<MemSessionEndParams>,
-    ) -> String {
+    async fn mem_session_end(&self, Parameters(params): Parameters<MemSessionEndParams>) -> String {
         let session_id = {
             let guard = self.current_session.lock().unwrap();
             *guard
@@ -563,7 +570,8 @@ impl CortexMemServer {
         files: Option<&Vec<String>>,
     ) -> Result<()> {
         let mgr = self.memory.lock().unwrap();
-        mgr.db().update_observation_fields(id, title, content, concepts, facts, files)?;
+        mgr.db()
+            .update_observation_fields(id, title, content, concepts, facts, files)?;
 
         // Re-sync FTS
         mgr.db().remove_from_fts(id).ok();
@@ -639,7 +647,12 @@ impl CortexMemServer {
         searcher.search(&params).unwrap_or_default()
     }
 
-    pub fn call_timeline(&self, id: i64, window: Option<i64>, project: &str) -> Result<Vec<Observation>> {
+    pub fn call_timeline(
+        &self,
+        id: i64,
+        window: Option<i64>,
+        project: &str,
+    ) -> Result<Vec<Observation>> {
         let mgr = self.memory.lock().unwrap();
         mgr.db().get_timeline(project, id, window.unwrap_or(5))
     }
@@ -712,7 +725,11 @@ impl CortexMemServer {
         let total = mgr.db().count_active(project)?;
         let by_tier = mgr.db().count_by_tier(project)?;
         let by_type = mgr.db().count_by_type(project)?;
-        Ok(StatsResult { total, by_tier, by_type })
+        Ok(StatsResult {
+            total,
+            by_tier,
+            by_type,
+        })
     }
 
     pub fn call_compact(&self, project: Option<&str>) -> Result<CompactionStats> {

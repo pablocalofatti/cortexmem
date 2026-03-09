@@ -48,7 +48,8 @@ fn compute_content_hash(content: &str) -> String {
 }
 
 fn vec_to_json(v: &Option<Vec<String>>) -> Option<String> {
-    v.as_ref().map(|items| serde_json::to_string(items).unwrap_or_default())
+    v.as_ref()
+        .map(|items| serde_json::to_string(items).unwrap_or_default())
 }
 
 fn json_to_vec(s: &Option<String>) -> Option<Vec<String>> {
@@ -126,11 +127,7 @@ impl Database {
         }
     }
 
-    pub fn find_by_topic_key(
-        &self,
-        project: &str,
-        topic_key: &str,
-    ) -> Result<Option<Observation>> {
+    pub fn find_by_topic_key(&self, project: &str, topic_key: &str) -> Result<Option<Observation>> {
         let result = self.conn().query_row(
             "SELECT id FROM observations
              WHERE project = ?1 AND topic_key = ?2 AND deleted_at IS NULL
@@ -303,7 +300,8 @@ impl Database {
         let sql = format!("UPDATE observations SET {} WHERE id = ?", sets.join(", "));
         params.push(Box::new(id));
 
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
         self.conn().execute(&sql, param_refs.as_slice())?;
 
         Ok(())
@@ -380,7 +378,8 @@ impl Database {
             ),
         };
 
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
         let mut stmt = self.conn().prepare(sql)?;
         let rows = stmt
             .query_map(param_refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
@@ -400,7 +399,8 @@ impl Database {
             ),
         };
 
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
         let mut stmt = self.conn().prepare(sql)?;
         let rows = stmt
             .query_map(param_refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
@@ -420,8 +420,11 @@ impl Database {
             ),
         };
 
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-        let count: i64 = self.conn().query_row(sql, param_refs.as_slice(), |row| row.get(0))?;
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+        let count: i64 = self
+            .conn()
+            .query_row(sql, param_refs.as_slice(), |row| row.get(0))?;
         Ok(count as usize)
     }
 
@@ -431,9 +434,9 @@ impl Database {
     ) -> Result<Vec<Observation>> {
         let ids: Vec<i64> = match project {
             Some(p) => {
-                let mut stmt = self.conn().prepare(
-                    "SELECT id FROM observations WHERE project = ?1 ORDER BY id",
-                )?;
+                let mut stmt = self
+                    .conn()
+                    .prepare("SELECT id FROM observations WHERE project = ?1 ORDER BY id")?;
                 stmt.query_map(rusqlite::params![p], |row| row.get(0))?
                     .collect::<Result<Vec<_>, _>>()?
             }
@@ -505,9 +508,13 @@ impl Database {
             "INSERT INTO observations_fts(rowid, title, content, concepts, facts, type, project)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
-                id, obs.title, obs.content,
-                concepts_json, facts_json,
-                obs.obs_type, obs.project
+                id,
+                obs.title,
+                obs.content,
+                concepts_json,
+                facts_json,
+                obs.obs_type,
+                obs.project
             ],
         )?;
 

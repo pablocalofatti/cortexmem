@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::db::Database;
 
-use super::decay::{evaluate_tier, TierAction};
+use super::decay::{TierAction, evaluate_tier};
 
 #[derive(Debug, Clone, Default)]
 pub struct CompactionStats {
