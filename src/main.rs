@@ -101,11 +101,41 @@ enum Commands {
     },
     /// Launch interactive TUI dashboard
     Tui,
+    /// Git-based team sync
+    GitSync {
+        #[command(subcommand)]
+        action: GitSyncAction,
+    },
     #[cfg(feature = "cloud")]
     /// Cloud sync server and management
     Cloud {
         #[command(subcommand)]
         action: CloudAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum GitSyncAction {
+    /// Initialize git sync repository
+    Init {
+        #[arg(long)]
+        repo: Option<String>,
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
+    },
+    /// Run a single sync cycle
+    Run {
+        #[arg(long)]
+        project: Option<String>,
+    },
+    /// Show sync status
+    Status,
+    /// Run auto-sync on an interval
+    Auto {
+        #[arg(long, default_value = "300")]
+        interval: u64,
+        #[arg(long)]
+        project: Option<String>,
     },
 }
 
@@ -208,6 +238,16 @@ async fn main() -> anyhow::Result<()> {
             cortexmem::tui::run(server)?;
             Ok(())
         }
+        Commands::GitSync { action } => match action {
+            GitSyncAction::Init { repo, path } => {
+                cortexmem::cli::sync::run_sync_init(repo.as_deref(), path.as_deref())
+            }
+            GitSyncAction::Run { project } => cortexmem::cli::sync::run_sync(project.as_deref()),
+            GitSyncAction::Status => cortexmem::cli::sync::run_sync_status(),
+            GitSyncAction::Auto { interval, project } => {
+                cortexmem::cli::sync::run_sync_auto(interval, project.as_deref()).await
+            }
+        },
         #[cfg(feature = "cloud")]
         Commands::Cloud { action } => cortexmem::cli::cloud::run_cloud(action).await,
     }

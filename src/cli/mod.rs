@@ -2,6 +2,7 @@
 pub mod cloud;
 pub mod export;
 pub mod setup;
+pub mod sync;
 
 use std::path::PathBuf;
 
@@ -13,7 +14,7 @@ use crate::mcp::CortexMemServer;
 
 /// Resolve the default database path (~/.local/share/cortexmem/cortexmem.db on Linux,
 /// ~/Library/Application Support/cortexmem/cortexmem.db on macOS).
-fn db_path() -> PathBuf {
+pub(crate) fn db_path() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("cortexmem")
@@ -21,7 +22,7 @@ fn db_path() -> PathBuf {
 }
 
 /// Infer project name from the current working directory basename.
-fn detect_project() -> String {
+pub(crate) fn detect_project() -> String {
     std::env::current_dir()
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
