@@ -28,8 +28,12 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Mcp => {
             tracing::info!("MCP server starting...");
-            // TODO: Task 9
-            Ok(())
+            let db_path = dirs::data_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join("cortexmem")
+                .join("cortexmem.db");
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            cortexmem::mcp::start_mcp_server(db_path.to_str().unwrap()).await
         }
         Commands::Status => {
             println!("cortexmem v{}", env!("CARGO_PKG_VERSION"));
