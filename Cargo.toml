@@ -149,6 +149,10 @@ path = "tests/integration/setup_test.rs"
 name = "config_test"
 path = "tests/integration/config_test.rs"
 
+[[test]]
+name = "reindex_test"
+path = "tests/integration/reindex_test.rs"
+
 [profile.release]
 lto = true
 strip = true

@@ -112,6 +112,23 @@ impl Database {
         Ok(())
     }
 
+    /// Delete all vector embeddings (used before reindex with a different model).
+    pub fn delete_all_vectors(&self) -> Result<()> {
+        self.conn.execute("DELETE FROM vec_observations", [])?;
+        Ok(())
+    }
+
+    /// List IDs of all non-deleted observations.
+    pub fn list_all_observation_ids(&self) -> Result<Vec<i64>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id FROM observations WHERE deleted_at IS NULL ORDER BY id")?;
+        let ids = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<std::result::Result<Vec<i64>, _>>()?;
+        Ok(ids)
+    }
+
     /// Count rows in the FTS5 index table.
     pub fn count_fts_entries(&self) -> Result<i64> {
         let count: i64 =
