@@ -1,4 +1,4 @@
-mod protocol;
+pub mod protocol;
 mod tools;
 
 pub use tools::CortexMemServer;

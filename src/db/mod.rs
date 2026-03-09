@@ -1,11 +1,13 @@
 mod fts;
 mod observations;
+mod prompts;
 mod schema;
 mod sessions;
 mod vector;
 
 pub use fts::FtsResult;
 pub use observations::{NewObservation, Observation};
+pub use prompts::Prompt;
 pub use sessions::Session;
 pub use vector::VecResult;
 

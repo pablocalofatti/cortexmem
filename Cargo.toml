@@ -1,6 +1,6 @@
 [package]
 name = "cortexmem"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 license = "MIT"
 description = "Persistent vector memory for AI coding agents"
@@ -27,9 +27,13 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "6"
 dialoguer = "0.11"
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
 
 [dev-dependencies]
 tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 
 [[test]]
 name = "db_test"
@@ -90,6 +94,18 @@ path = "tests/integration/topic_suggest_test.rs"
 [[test]]
 name = "export_test"
 path = "tests/integration/export_test.rs"
+
+[[test]]
+name = "prompts_test"
+path = "tests/integration/prompts_test.rs"
+
+[[test]]
+name = "mcp_prompts_test"
+path = "tests/integration/mcp_prompts_test.rs"
+
+[[test]]
+name = "http_test"
+path = "tests/integration/http_test.rs"
 
 [profile.release]
 lto = true

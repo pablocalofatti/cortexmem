@@ -206,6 +206,12 @@ impl Database {
         Ok(())
     }
 
+    pub fn hard_delete(&self, id: i64) -> Result<()> {
+        self.conn()
+            .execute("DELETE FROM observations WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
     pub fn increment_access_count(&self, id: i64) -> Result<()> {
         self.conn().execute(
             "UPDATE observations SET access_count = access_count + 1, updated_at = datetime('now') WHERE id = ?1",

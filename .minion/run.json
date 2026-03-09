@@ -1,0 +1,1 @@
+{"run_id":"minion-1741520400","workflow":"tdd","platform":"claude-code","started_at":"2026-03-09T12:00:00Z","tasks":["1","2","6","7"],"waves":[["1","2","6","7"],["3"],["4","5"]],"max_parallel":4}
