@@ -51,6 +51,13 @@ enum Commands {
     },
     /// Run compaction (promote/archive observations by decay rules)
     Compact,
+    /// Export all memories to a JSON file
+    Export {
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+        #[arg(long)]
+        project: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -103,5 +110,8 @@ async fn main() -> anyhow::Result<()> {
             ModelAction::Status => cortexmem::cli::run_model_status(),
         },
         Commands::Compact => cortexmem::cli::run_compact(),
+        Commands::Export { output, project } => {
+            cortexmem::cli::export::run_export(output, project)
+        }
     }
 }

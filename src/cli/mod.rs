@@ -1,3 +1,5 @@
+pub mod export;
+
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -99,15 +101,15 @@ pub fn run_get(id: i64) -> Result<()> {
         Some(obs) => {
             println!("# {} (id: {})", obs.title, obs.id);
             println!("Type: {} | Tier: {} | Scope: {}", obs.obs_type, obs.tier, obs.scope);
-            if let Some(ref concepts) = obs.concepts {
-                if !concepts.is_empty() {
-                    println!("Concepts: {}", concepts.join(", "));
-                }
+            if let Some(ref concepts) = obs.concepts
+                && !concepts.is_empty()
+            {
+                println!("Concepts: {}", concepts.join(", "));
             }
-            if let Some(ref facts) = obs.facts {
-                if !facts.is_empty() {
-                    println!("Facts: {}", facts.join("; "));
-                }
+            if let Some(ref facts) = obs.facts
+                && !facts.is_empty()
+            {
+                println!("Facts: {}", facts.join("; "));
             }
             println!("Accesses: {} | Revisions: {}", obs.access_count, obs.revision_count);
             println!("Created: {} | Updated: {}", obs.created_at, obs.updated_at);

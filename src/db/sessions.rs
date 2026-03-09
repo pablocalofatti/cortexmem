@@ -1,8 +1,9 @@
 use anyhow::Result;
+use serde::Serialize;
 
 use super::Database;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Session {
     pub id: i64,
     pub project: String,
@@ -66,6 +67,34 @@ impl Database {
             rusqlite::params![id, summary],
         )?;
         Ok(())
+    }
+
+    pub fn list_all_sessions_for_export(
+        &self,
+        project: Option<&str>,
+    ) -> Result<Vec<Session>> {
+        match project {
+            Some(p) => {
+                let mut stmt = self.conn().prepare(
+                    "SELECT id, project, directory, summary, started_at, ended_at
+                     FROM sessions WHERE project = ?1 ORDER BY id",
+                )?;
+                let rows = stmt
+                    .query_map(rusqlite::params![p], row_to_session)?
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(rows)
+            }
+            None => {
+                let mut stmt = self.conn().prepare(
+                    "SELECT id, project, directory, summary, started_at, ended_at
+                     FROM sessions ORDER BY id",
+                )?;
+                let rows = stmt
+                    .query_map([], row_to_session)?
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(rows)
+            }
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use super::Database;
@@ -17,12 +18,13 @@ pub struct NewObservation {
     pub session_id: Option<i64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Observation {
     pub id: i64,
     pub session_id: Option<i64>,
     pub project: String,
     pub topic_key: Option<String>,
+    #[serde(rename = "type")]
     pub obs_type: String,
     pub title: String,
     pub content: String,
@@ -167,33 +169,33 @@ impl Database {
     }
 
     pub fn upsert_observation(&self, obs: &NewObservation) -> Result<i64> {
-        if let Some(ref topic_key) = obs.topic_key {
-            if let Some(existing) = self.find_by_topic_key(&obs.project, topic_key)? {
-                let hash = compute_content_hash(&obs.content);
-                let concepts_json = vec_to_json(&obs.concepts);
-                let facts_json = vec_to_json(&obs.facts);
-                let files_json = vec_to_json(&obs.files);
+        if let Some(ref topic_key) = obs.topic_key
+            && let Some(existing) = self.find_by_topic_key(&obs.project, topic_key)?
+        {
+            let hash = compute_content_hash(&obs.content);
+            let concepts_json = vec_to_json(&obs.concepts);
+            let facts_json = vec_to_json(&obs.facts);
+            let files_json = vec_to_json(&obs.files);
 
-                self.conn().execute(
-                    "UPDATE observations SET
-                        title = ?1, content = ?2, concepts = ?3, facts = ?4,
-                        files = ?5, content_hash = ?6,
-                        revision_count = revision_count + 1,
-                        updated_at = datetime('now')
-                     WHERE id = ?7",
-                    rusqlite::params![
-                        obs.title,
-                        obs.content,
-                        concepts_json,
-                        facts_json,
-                        files_json,
-                        hash,
-                        existing.id,
-                    ],
-                )?;
+            self.conn().execute(
+                "UPDATE observations SET
+                    title = ?1, content = ?2, concepts = ?3, facts = ?4,
+                    files = ?5, content_hash = ?6,
+                    revision_count = revision_count + 1,
+                    updated_at = datetime('now')
+                 WHERE id = ?7",
+                rusqlite::params![
+                    obs.title,
+                    obs.content,
+                    concepts_json,
+                    facts_json,
+                    files_json,
+                    hash,
+                    existing.id,
+                ],
+            )?;
 
-                return Ok(existing.id);
-            }
+            return Ok(existing.id);
         }
 
         self.insert_observation(obs)
@@ -421,6 +423,36 @@ impl Database {
         let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
         let count: i64 = self.conn().query_row(sql, param_refs.as_slice(), |row| row.get(0))?;
         Ok(count as usize)
+    }
+
+    pub fn list_all_observations_for_export(
+        &self,
+        project: Option<&str>,
+    ) -> Result<Vec<Observation>> {
+        let ids: Vec<i64> = match project {
+            Some(p) => {
+                let mut stmt = self.conn().prepare(
+                    "SELECT id FROM observations WHERE project = ?1 ORDER BY id",
+                )?;
+                stmt.query_map(rusqlite::params![p], |row| row.get(0))?
+                    .collect::<Result<Vec<_>, _>>()?
+            }
+            None => {
+                let mut stmt = self
+                    .conn()
+                    .prepare("SELECT id FROM observations ORDER BY id")?;
+                stmt.query_map([], |row| row.get(0))?
+                    .collect::<Result<Vec<_>, _>>()?
+            }
+        };
+
+        let mut observations = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(obs) = self.get_observation(id)? {
+                observations.push(obs);
+            }
+        }
+        Ok(observations)
     }
 
     /// Backdate an observation's timestamps. Used for testing decay rules
