@@ -117,7 +117,10 @@ impl<'a> HybridSearcher<'a> {
             }
 
             // Boost by recency, access count, and search feedback
-            let feedback_count = self.db.get_feedback_count(obs.id).unwrap_or(0);
+            let feedback_count = self.db.get_feedback_count(obs.id).unwrap_or_else(|e| {
+                tracing::warn!("Failed to get feedback count for obs {}: {e}", obs.id);
+                0
+            });
             let final_score = apply_boosts(
                 *rrf_score,
                 &obs.updated_at,

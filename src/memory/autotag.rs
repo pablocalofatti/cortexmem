@@ -76,7 +76,7 @@ pub fn extract_keywords(text: &str, limit: usize) -> Vec<String> {
     }
 
     // Count term frequency using stemmed forms
-    let mut tf: HashMap<String, (usize, String)> = HashMap::new(); // stem -> (count, original)
+    let mut tf: HashMap<String, (usize, String)> = HashMap::with_capacity(tokens.len() / 2); // stem -> (count, original)
     for token in &tokens {
         if STOP_WORDS.contains(token.as_str()) {
             continue;

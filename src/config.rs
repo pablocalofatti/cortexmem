@@ -31,7 +31,10 @@ impl Config {
             return Self::default();
         };
         match std::fs::read_to_string(path) {
-            Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
+            Ok(contents) => toml::from_str(&contents).unwrap_or_else(|e| {
+                tracing::warn!("Failed to parse config at {}: {e}", path.display());
+                Self::default()
+            }),
             Err(_) => Self::default(),
         }
     }
