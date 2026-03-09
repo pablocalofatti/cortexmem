@@ -474,6 +474,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlite-vec",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
