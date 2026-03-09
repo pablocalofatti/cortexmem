@@ -11,24 +11,21 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             archive: cortexmem-linux-x64.tar.gz
-            use_cross: false
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             archive: cortexmem-linux-arm64.tar.gz
-            use_cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
             archive: cortexmem-darwin-x64.tar.gz
-            use_cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: cortexmem-darwin-arm64.tar.gz
-            use_cross: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -37,16 +34,15 @@ jobs:
         run: |
           rustup target add ${{ matrix.target }}
 
-      - name: Install cross
-        if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Build (cross)
-        if: matrix.use_cross
-        run: cross build --release --target ${{ matrix.target }}
-
-      - name: Build (native)
-        if: '!matrix.use_cross'
+      - name: Build
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Package

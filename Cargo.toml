@@ -29,6 +29,7 @@ dirs = "6"
 dialoguer = "0.11"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
+openssl = { version = "0.10", features = ["vendored"] }
 
 [dev-dependencies]
 tempfile = "3"
