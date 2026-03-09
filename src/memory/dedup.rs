@@ -20,10 +20,10 @@ pub fn check_dedup(db: &Database, obs: &NewObservation) -> Result<DedupResult> {
     }
 
     // 2. Topic key check — same project + topic_key = upsert
-    if let Some(ref topic_key) = obs.topic_key {
-        if let Some(existing) = db.find_by_topic_key(&obs.project, topic_key)? {
-            return Ok(DedupResult::TopicKeyUpsert(existing.id));
-        }
+    if let Some(ref topic_key) = obs.topic_key
+        && let Some(existing) = db.find_by_topic_key(&obs.project, topic_key)?
+    {
+        return Ok(DedupResult::TopicKeyUpsert(existing.id));
     }
 
     Ok(DedupResult::NewContent)

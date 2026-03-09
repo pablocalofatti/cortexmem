@@ -20,6 +20,7 @@ static VEC_INIT: Once = Once::new();
 
 fn register_vec_extension() {
     VEC_INIT.call_once(|| {
+        #[allow(clippy::missing_transmute_annotations)]
         unsafe {
             // SAFETY: Registering sqlite-vec as an auto-extension before any
             // connections are created. `call_once` guarantees this runs exactly

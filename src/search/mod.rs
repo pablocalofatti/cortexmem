@@ -93,24 +93,24 @@ impl<'a> HybridSearcher<'a> {
             }
 
             // Filter by type
-            if let Some(ref filter_type) = params.obs_type {
-                if obs.obs_type != *filter_type {
-                    continue;
-                }
+            if let Some(ref filter_type) = params.obs_type
+                && obs.obs_type != *filter_type
+            {
+                continue;
             }
 
             // Filter by scope
-            if let Some(ref filter_scope) = params.scope {
-                if obs.scope != *filter_scope {
-                    continue;
-                }
+            if let Some(ref filter_scope) = params.scope
+                && obs.scope != *filter_scope
+            {
+                continue;
             }
 
             // Filter by project (double-check since FTS may not perfectly filter)
-            if let Some(ref filter_project) = params.project {
-                if obs.project != *filter_project {
-                    continue;
-                }
+            if let Some(ref filter_project) = params.project
+                && obs.project != *filter_project
+            {
+                continue;
             }
 
             // Boost by recency and access count

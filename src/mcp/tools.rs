@@ -93,7 +93,11 @@ pub struct MemContextParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MemSuggestTopicParams {
     pub title: String,
-    pub content: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub content: Option<String>,
+    #[serde(rename = "type", default)]
+    pub obs_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -127,6 +131,32 @@ pub struct MemCompactParams {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MemModelParams {}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+fn generate_topic_key(obs_type: &str, title: &str) -> String {
+    let family = match obs_type {
+        "architecture" => "architecture",
+        "decision" => "decision",
+        "bug_fix" => "bug",
+        "pattern" => "pattern",
+        "config" => "config",
+        "discovery" => "discovery",
+        "learning" => "learning",
+        "milestone" => "milestone",
+        _ => "general",
+    };
+    let slug: String = title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == ' ' { c } else { ' ' })
+        .collect::<String>()
+        .split_whitespace()
+        .take(4)
+        .collect::<Vec<_>>()
+        .join("-");
+    format!("{family}/{slug}")
+}
 
 // ── Server ───────────────────────────────────────────────────────
 
@@ -342,38 +372,14 @@ impl CortexMemServer {
 
     #[tool(
         name = "mem_suggest_topic",
-        description = "Suggest matching existing topic_keys for a given title and content. Helps maintain consistent topic organization."
+        description = "Generate a topic_key for an observation and find matching existing keys. Use before mem_save to enable upsert behavior."
     )]
     async fn mem_suggest_topic(
         &self,
         Parameters(params): Parameters<MemSuggestTopicParams>,
     ) -> String {
-        // For now, just list existing topic_keys — could add FTS-based matching later
-        let _ = (params.title, params.content); // acknowledge params
-        let mgr = self.memory.lock().unwrap();
-
-        // We need a project context — use current session's project or list all
-        match mgr.db().list_all_active_observations() {
-            Ok(observations) => {
-                let mut keys: Vec<String> = observations
-                    .iter()
-                    .filter_map(|obs| obs.topic_key.clone())
-                    .collect();
-                keys.sort();
-                keys.dedup();
-
-                if keys.is_empty() {
-                    return "No existing topic_keys found.".to_string();
-                }
-
-                let mut out = "Existing topic_keys:\n".to_string();
-                for key in &keys {
-                    out.push_str(&format!("  - {key}\n"));
-                }
-                out
-            }
-            Err(e) => format!("Error suggesting topics: {e}"),
-        }
+        let obs_type = params.obs_type.as_deref().unwrap_or("general");
+        self.call_suggest_topic(obs_type, &params.title)
     }
 
     // ── Lifecycle Tools ──────────────────────────────────────
@@ -649,9 +655,42 @@ impl CortexMemServer {
         }
     }
 
-    pub fn call_suggest_topic(&self, project: &str) -> Result<Vec<String>> {
+    pub fn call_suggest_topic(&self, obs_type: &str, title: &str) -> String {
+        let suggested = generate_topic_key(obs_type, title);
+        let family = suggested.split('/').next().unwrap_or("general");
         let mgr = self.memory.lock().unwrap();
-        mgr.db().list_topic_keys(project)
+
+        let existing: Vec<(String, i64)> = mgr
+            .db()
+            .list_all_active_observations()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|obs| {
+                obs.topic_key.as_ref().and_then(|key| {
+                    if key.starts_with(&format!("{family}/")) {
+                        Some((key.clone(), obs.revision_count))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .take(5)
+            .collect();
+
+        let mut out = format!("Suggested: {suggested}\n");
+        if !existing.is_empty() {
+            out.push_str("Existing matches:\n");
+            for (key, revisions) in &existing {
+                out.push_str(&format!(
+                    "  - {key} ({} revision{})\n",
+                    revisions,
+                    if *revisions == 1 { "" } else { "s" }
+                ));
+            }
+        }
+        out
     }
 
     // ── Lifecycle operations ─────────────────────────────────

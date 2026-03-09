@@ -28,20 +28,20 @@ pub fn format_full(obs: &Observation) -> String {
         obs.title, obs.id, obs.obs_type, obs.tier, obs.scope,
     );
 
-    if let Some(ref concepts) = obs.concepts {
-        if !concepts.is_empty() {
-            out.push_str(&format!("Concepts: {}\n", concepts.join(", ")));
-        }
+    if let Some(ref concepts) = obs.concepts
+        && !concepts.is_empty()
+    {
+        out.push_str(&format!("Concepts: {}\n", concepts.join(", ")));
     }
-    if let Some(ref facts) = obs.facts {
-        if !facts.is_empty() {
-            out.push_str(&format!("Facts: {}\n", facts.join("; ")));
-        }
+    if let Some(ref facts) = obs.facts
+        && !facts.is_empty()
+    {
+        out.push_str(&format!("Facts: {}\n", facts.join("; ")));
     }
-    if let Some(ref files) = obs.files {
-        if !files.is_empty() {
-            out.push_str(&format!("Files: {}\n", files.join(", ")));
-        }
+    if let Some(ref files) = obs.files
+        && !files.is_empty()
+    {
+        out.push_str(&format!("Files: {}\n", files.join(", ")));
     }
     if let Some(ref topic_key) = obs.topic_key {
         out.push_str(&format!("Topic: {topic_key}\n"));

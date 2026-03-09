@@ -21,6 +21,7 @@ pub fn build_search_text(
     parts.join("\n")
 }
 
+#[allow(dead_code)]
 pub fn embed_text(manager: &EmbeddingManager, text: &str) -> Result<Option<Vec<f32>>> {
     if !manager.is_model_available() {
         return Ok(None);

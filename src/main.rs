@@ -58,6 +58,8 @@ enum Commands {
         #[arg(long)]
         project: Option<String>,
     },
+    /// Set up cortexmem for your AI agent (interactive wizard)
+    Setup,
 }
 
 #[derive(Subcommand)]
@@ -113,5 +115,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Export { output, project } => {
             cortexmem::cli::export::run_export(output, project)
         }
+        Commands::Setup => cortexmem::cli::setup::run_setup(),
     }
 }

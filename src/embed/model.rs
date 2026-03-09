@@ -79,7 +79,7 @@ impl EmbeddingManager {
             .as_mut()
             .ok_or_else(|| anyhow::anyhow!("Embedding model not downloaded"))?;
 
-        let embeddings = model.embed(texts.to_vec(), None)?;
+        let embeddings = model.embed(texts, None)?;
         Ok(embeddings)
     }
 
