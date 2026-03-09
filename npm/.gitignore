@@ -1,0 +1,4 @@
+bin/cortexmem
+bin/cortexmem.exe
+bin/_*.tar.gz
+node_modules/
