@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rusqlite::Connection;
 
-pub(crate) const CURRENT_VERSION: i64 = 3;
+pub(crate) const CURRENT_VERSION: i64 = 4;
 
 pub fn migrate(conn: &Connection) -> Result<()> {
     let version = get_schema_version(conn);
@@ -138,6 +138,28 @@ pub fn migrate(conn: &Connection) -> Result<()> {
 
         conn.execute(
             "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', '3')",
+            [],
+        )?;
+    }
+
+    if version < 4 {
+        conn.execute_batch(
+            "
+            CREATE TABLE IF NOT EXISTS search_feedback (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_text      TEXT NOT NULL,
+                observation_id  INTEGER REFERENCES observations(id),
+                session_id      INTEGER REFERENCES sessions(id),
+                created_at      TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_search_feedback_observation
+                ON search_feedback(observation_id);
+            ",
+        )?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', '4')",
             [],
         )?;
     }

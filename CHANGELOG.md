@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-09
+
+### Added
+
+**Multi-Model Embedding Support**
+- Configurable embedding model via `~/.config/cortexmem/config.toml`
+- Supported models: AllMiniLML6V2 (default), BGESmallENV15, AllMiniLML12V2
+- `cortexmem reindex` command drops all vectors and re-embeds with configured model
+- Model name stored in meta table; `doctor` detects config-vs-DB mismatch
+
+**Auto-Tagging**
+- TF-IDF keyword extraction fills `concepts` when not provided by agent
+- Declarative sentence extraction fills `facts` when not provided
+- `cortexmem auto-tag` batch command backfills existing observations
+- Stop word removal + simple suffix stemming for quality keywords
+
+**Relevance Learning**
+- Search feedback table tracks search→access signals (schema v4)
+- `mem_get` after `mem_search` records implicit feedback
+- Feedback boost in search ranking: `1.0 + 0.1 * feedback_count` (capped at 2.0)
+
+**Configuration**
+- New `~/.config/cortexmem/config.toml` for persistent settings
+- `toml = "0.8"` dependency for config parsing
+
+### Changed
+- Schema version bumped from 3 to 4 (additive — existing data untouched)
+- Search ranking now includes feedback factor alongside recency and access boosts
+- Doctor command checks for embedding model mismatch
+
 ## [1.3.0] - 2026-03-09
 
 ### Added
@@ -227,7 +257,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2 unit tests for embedding pipeline
 - `Database::open_in_memory()` for all DB tests — no temp files
 
-[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/pablocalofatti/cortexmem/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pablocalofatti/cortexmem/compare/v1.0.0...v1.1.0

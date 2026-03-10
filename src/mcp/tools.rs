@@ -188,6 +188,7 @@ pub struct CortexMemServer {
     tool_router: ToolRouter<Self>,
     memory: Mutex<MemoryManager>,
     current_session: Mutex<Option<i64>>,
+    last_search_query: Mutex<Option<String>>,
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -288,6 +289,9 @@ impl CortexMemServer {
             params.limit.map(|l| l as usize),
         );
 
+        // Store the query for feedback recording on subsequent mem_get
+        *self.last_search_query.lock().unwrap() = Some(params.query.clone());
+
         if results.is_empty() {
             return "No results found.".to_string();
         }
@@ -324,9 +328,17 @@ impl CortexMemServer {
 
         match self.call_get_multiple(&ids) {
             Ok(observations) => {
-                // Track access for each
+                // Track access and record search feedback for each
+                let last_query = self.last_search_query.lock().unwrap().take();
+                let session_id = *self.current_session.lock().unwrap();
                 for obs in &observations {
                     let _ = self.track_access(obs.id);
+                    if let Some(ref query) = last_query {
+                        let mgr = self.memory.lock().unwrap();
+                        mgr.db()
+                            .record_search_feedback(query, obs.id, session_id)
+                            .ok();
+                    }
                 }
                 if observations.is_empty() {
                     return "No observations found.".to_string();
@@ -589,6 +601,7 @@ impl CortexMemServer {
             tool_router: Self::tool_router(),
             memory: Mutex::new(MemoryManager::new(db, embed_mgr)),
             current_session: Mutex::new(None),
+            last_search_query: Mutex::new(None),
         }
     }
 

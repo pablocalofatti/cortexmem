@@ -12,9 +12,20 @@ pub enum ModelStatus {
     Ready,
 }
 
+/// Parse a config model name string to a fastembed EmbeddingModel variant.
+pub fn parse_model_name(name: &str) -> Option<EmbeddingModel> {
+    match name {
+        "AllMiniLML6V2" => Some(EmbeddingModel::AllMiniLML6V2),
+        "BGESmallENV15" => Some(EmbeddingModel::BGESmallENV15),
+        "AllMiniLML12V2" => Some(EmbeddingModel::AllMiniLML12V2),
+        _ => None,
+    }
+}
+
 pub struct EmbeddingManager {
     cache_dir: PathBuf,
     model: Mutex<Option<TextEmbedding>>,
+    model_name: String,
 }
 
 impl EmbeddingManager {
@@ -22,15 +33,29 @@ impl EmbeddingManager {
         Self {
             cache_dir: cache_dir.into(),
             model: Mutex::new(None),
+            model_name: "AllMiniLML6V2".to_string(),
         }
     }
 
-    pub fn new_with_download(cache_dir: impl Into<PathBuf>) -> Result<Self> {
+    pub fn new_with_model(cache_dir: impl Into<PathBuf>, model_name: &str) -> Self {
+        Self {
+            cache_dir: cache_dir.into(),
+            model: Mutex::new(None),
+            model_name: model_name.to_string(),
+        }
+    }
+
+    pub fn model_name(&self) -> &str {
+        &self.model_name
+    }
+
+    pub fn new_with_download(cache_dir: impl Into<PathBuf>, model_name: &str) -> Result<Self> {
         let cache_dir = cache_dir.into();
-        let model = Self::load_model(&cache_dir)?;
+        let model = Self::load_model_for(&cache_dir, model_name)?;
         Ok(Self {
             cache_dir,
             model: Mutex::new(Some(model)),
+            model_name: model_name.to_string(),
         })
     }
 
@@ -54,7 +79,7 @@ impl EmbeddingManager {
     }
 
     pub fn download_model(&self) -> Result<()> {
-        let model = Self::load_model(&self.cache_dir)?;
+        let model = Self::load_model_for(&self.cache_dir, &self.model_name)?;
         let mut guard = self.model.lock().unwrap_or_else(|e| e.into_inner());
         *guard = Some(model);
         Ok(())
@@ -83,12 +108,12 @@ impl EmbeddingManager {
         Ok(embeddings)
     }
 
-    fn load_model(cache_dir: &Path) -> Result<TextEmbedding> {
-        let options = TextInitOptions::new(EmbeddingModel::AllMiniLML6V2)
+    fn load_model_for(cache_dir: &Path, model_name: &str) -> Result<TextEmbedding> {
+        let embedding_model = parse_model_name(model_name)
+            .ok_or_else(|| anyhow::anyhow!("Unknown embedding model: {model_name}"))?;
+        let options = TextInitOptions::new(embedding_model)
             .with_cache_dir(cache_dir.join(MODEL_DIR_NAME))
             .with_show_download_progress(true);
-
-        let model = TextEmbedding::try_new(options)?;
-        Ok(model)
+        TextEmbedding::try_new(options)
     }
 }

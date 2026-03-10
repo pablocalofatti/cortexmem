@@ -1,3 +1,4 @@
+mod feedback;
 mod fts;
 mod observations;
 mod prompts;
@@ -101,6 +102,32 @@ impl Database {
                 row.get(0)
             })
             .ok()
+    }
+
+    /// Write a value to the `meta` key-value table.
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+            [key, value],
+        )?;
+        Ok(())
+    }
+
+    /// Delete all vector embeddings (used before reindex with a different model).
+    pub fn delete_all_vectors(&self) -> Result<()> {
+        self.conn.execute("DELETE FROM vec_observations", [])?;
+        Ok(())
+    }
+
+    /// List IDs of all non-deleted observations.
+    pub fn list_all_observation_ids(&self) -> Result<Vec<i64>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id FROM observations WHERE deleted_at IS NULL ORDER BY id")?;
+        let ids = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<std::result::Result<Vec<i64>, _>>()?;
+        Ok(ids)
     }
 
     /// Count rows in the FTS5 index table.

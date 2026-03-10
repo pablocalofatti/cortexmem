@@ -1,3 +1,4 @@
+pub mod autotag;
 mod compact;
 mod decay;
 mod dedup;
@@ -36,7 +37,8 @@ impl MemoryManager {
     }
 
     pub fn save_observation(&self, obs: &NewObservation) -> Result<SaveResult> {
-        let dedup_status = dedup::check_dedup(&self.db, obs)?;
+        let obs = self.maybe_autotag(obs);
+        let dedup_status = dedup::check_dedup(&self.db, &obs)?;
 
         match &dedup_status {
             DedupResult::HashMatch(existing_id) => {
@@ -49,14 +51,14 @@ impl MemoryManager {
             }
             DedupResult::TopicKeyUpsert(_) => {
                 // Upsert: update existing observation
-                let id = self.db.upsert_observation(obs)?;
+                let id = self.db.upsert_observation(&obs)?;
 
                 // Sync FTS
                 self.db.remove_from_fts(id).ok(); // may not exist yet
                 self.db.sync_observation_to_fts(id)?;
 
                 // Re-embed if model available
-                let was_embedded = self.try_embed_observation(id, obs);
+                let was_embedded = self.try_embed_observation(id, &obs);
 
                 Ok(SaveResult {
                     id,
@@ -66,13 +68,13 @@ impl MemoryManager {
             }
             DedupResult::NewContent => {
                 // Insert new observation
-                let id = self.db.insert_observation(obs)?;
+                let id = self.db.insert_observation(&obs)?;
 
                 // Sync FTS
                 self.db.sync_observation_to_fts(id)?;
 
                 // Embed if model available
-                let was_embedded = self.try_embed_observation(id, obs);
+                let was_embedded = self.try_embed_observation(id, &obs);
 
                 Ok(SaveResult {
                     id,
@@ -81,6 +83,27 @@ impl MemoryManager {
                 })
             }
         }
+    }
+
+    fn maybe_autotag(&self, obs: &NewObservation) -> NewObservation {
+        let mut obs = obs.clone();
+
+        if obs.concepts.is_none() || obs.concepts.as_ref().is_some_and(|c| c.is_empty()) {
+            let text = format!("{} {}", obs.title, obs.content);
+            let keywords = autotag::extract_keywords(&text, autotag::DEFAULT_KEYWORD_LIMIT);
+            if !keywords.is_empty() {
+                obs.concepts = Some(keywords);
+            }
+        }
+
+        if obs.facts.is_none() || obs.facts.as_ref().is_some_and(|f| f.is_empty()) {
+            let facts = autotag::extract_facts(&obs.content, 3);
+            if !facts.is_empty() {
+                obs.facts = Some(facts);
+            }
+        }
+
+        obs
     }
 
     fn try_embed_observation(&self, id: i64, obs: &NewObservation) -> bool {

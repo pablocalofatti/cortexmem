@@ -112,6 +112,14 @@ enum Commands {
         #[arg(long)]
         fix: bool,
     },
+    /// Backfill auto-generated concepts and facts for observations that don't have them
+    AutoTag {
+        /// Process all observations, not just those missing concepts
+        #[arg(long)]
+        all: bool,
+    },
+    /// Drop all vectors and re-embed with the configured model
+    Reindex,
     #[cfg(feature = "cloud")]
     /// Cloud sync server and management
     Cloud {
@@ -206,8 +214,13 @@ async fn main() -> anyhow::Result<()> {
             let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             let db = cortexmem::db::Database::open(&db_path)?;
+            let config = cortexmem::config::Config::load();
+            db.set_meta("embedding_model", &config.embedding.model).ok();
             let cache_dir = db_path.parent().unwrap().to_path_buf();
-            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new_with_model(
+                &cache_dir,
+                &config.embedding.model,
+            );
             let server =
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::http::start_http_server(server, &host, port).await
@@ -216,8 +229,13 @@ async fn main() -> anyhow::Result<()> {
             let db_path = cortexmem::cli::db_path();
             std::fs::create_dir_all(db_path.parent().unwrap())?;
             let db = cortexmem::db::Database::open(&db_path)?;
+            let config = cortexmem::config::Config::load();
+            db.set_meta("embedding_model", &config.embedding.model).ok();
             let cache_dir = db_path.parent().unwrap().to_path_buf();
-            let embed_mgr = cortexmem::embed::EmbeddingManager::new(&cache_dir);
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new_with_model(
+                &cache_dir,
+                &config.embedding.model,
+            );
             let server =
                 std::sync::Arc::new(cortexmem::mcp::CortexMemServer::new(db, Some(embed_mgr)));
             cortexmem::tui::run(server)?;
@@ -240,6 +258,127 @@ async fn main() -> anyhow::Result<()> {
             if fix {
                 println!("\nauto-fix not yet implemented");
             }
+            Ok(())
+        }
+        Commands::AutoTag { all } => {
+            let db_path = cortexmem::cli::db_path();
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+
+            let ids = if all {
+                db.list_all_observation_ids()?
+            } else {
+                db.list_observations_without_concepts()?
+            };
+
+            println!("Auto-tagging {} observations...", ids.len());
+            let mut updated = 0;
+
+            for id in &ids {
+                if let Ok(Some(obs)) = db.get_observation(*id) {
+                    let text = format!("{} {}", obs.title, obs.content);
+                    let keywords = cortexmem::memory::autotag::extract_keywords(
+                        &text,
+                        cortexmem::memory::autotag::DEFAULT_KEYWORD_LIMIT,
+                    );
+                    let facts = cortexmem::memory::autotag::extract_facts(&obs.content, 3);
+
+                    let concepts_update = if keywords.is_empty() {
+                        None
+                    } else {
+                        Some(&keywords)
+                    };
+                    let facts_update = if facts.is_empty() { None } else { Some(&facts) };
+
+                    if concepts_update.is_some() || facts_update.is_some() {
+                        db.update_observation_fields(
+                            *id,
+                            None,
+                            None,
+                            concepts_update,
+                            facts_update,
+                            None,
+                        )?;
+                        // Re-sync FTS
+                        db.remove_from_fts(*id).ok();
+                        db.sync_observation_to_fts(*id)?;
+                        updated += 1;
+                    }
+                }
+            }
+
+            println!(
+                "Auto-tagged {updated} observations ({} skipped).",
+                ids.len() - updated
+            );
+            Ok(())
+        }
+        Commands::Reindex => {
+            let config = cortexmem::config::Config::load();
+            let db_path = cortexmem::cli::db_path();
+            std::fs::create_dir_all(db_path.parent().unwrap())?;
+            let db = cortexmem::db::Database::open(&db_path)?;
+            let cache_dir = db_path.parent().unwrap().to_path_buf();
+            let embed_mgr = cortexmem::embed::EmbeddingManager::new_with_model(
+                &cache_dir,
+                &config.embedding.model,
+            );
+
+            println!("Reindexing with model: {}", config.embedding.model);
+            println!("Dropping all existing vectors...");
+            db.delete_all_vectors()?;
+
+            if !embed_mgr.is_model_available() {
+                println!("Downloading model...");
+                embed_mgr.download_model()?;
+            }
+
+            let ids = db.list_all_observation_ids()?;
+            println!("Re-embedding {} observations...", ids.len());
+
+            let mut success = 0;
+            let mut failed = 0;
+            for id in &ids {
+                if let Ok(Some(obs)) = db.get_observation(*id) {
+                    let concepts_vec: Vec<&str> = obs
+                        .concepts
+                        .as_deref()
+                        .unwrap_or_default()
+                        .iter()
+                        .map(String::as_str)
+                        .collect();
+                    let facts_vec: Vec<&str> = obs
+                        .facts
+                        .as_deref()
+                        .unwrap_or_default()
+                        .iter()
+                        .map(String::as_str)
+                        .collect();
+                    let search_text = cortexmem::embed::build_search_text(
+                        &obs.title,
+                        &obs.content,
+                        &concepts_vec,
+                        &facts_vec,
+                    );
+                    match embed_mgr.embed(&search_text) {
+                        Ok(embedding) => {
+                            if let Err(e) = db.insert_vector(*id, &embedding) {
+                                tracing::warn!("Failed to insert vector for observation {id}: {e}");
+                                failed += 1;
+                            } else {
+                                success += 1;
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to embed observation {id}: {e}");
+                            failed += 1;
+                        }
+                    }
+                }
+            }
+
+            db.set_meta("embedding_model", &config.embedding.model)?;
+            println!("Reindex complete: {success} embedded, {failed} failed.");
             Ok(())
         }
         #[cfg(feature = "cloud")]

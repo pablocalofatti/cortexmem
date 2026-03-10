@@ -43,6 +43,7 @@ pub fn run_checks(server: &CortexMemServer) -> Vec<CheckResult> {
         check_database(server),
         check_schema_version(server),
         check_embedding_model(server),
+        check_model_mismatch(server),
         check_fts_index(server),
         check_vector_index(server),
         check_mcp_config(),
@@ -148,6 +149,36 @@ fn check_embedding_model(server: &CortexMemServer) -> CheckResult {
             name: "Embedding model",
             status: CheckStatus::Warn,
             detail: "disabled (no cache directory)".into(),
+        },
+    }
+}
+
+fn check_model_mismatch(server: &CortexMemServer) -> CheckResult {
+    let config = crate::config::Config::load();
+    let mgr = server.memory_lock();
+    let stored_model = mgr.db().get_meta("embedding_model");
+
+    match stored_model {
+        Some(stored) if stored != config.embedding.model => CheckResult {
+            name: "Model config",
+            status: CheckStatus::Warn,
+            detail: format!(
+                "Config says '{}' but DB has '{}'. Run `cortexmem reindex` to re-embed.",
+                config.embedding.model, stored
+            ),
+        },
+        Some(stored) => CheckResult {
+            name: "Model config",
+            status: CheckStatus::Ok,
+            detail: format!("{stored} (matches config)"),
+        },
+        None => CheckResult {
+            name: "Model config",
+            status: CheckStatus::Ok,
+            detail: format!(
+                "{} (default, not yet stored in meta)",
+                config.embedding.model
+            ),
         },
     }
 }

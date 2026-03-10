@@ -4,7 +4,7 @@ use cortexmem::db::Database;
 fn should_initialize_database_with_schema() {
     let db = Database::open_in_memory().unwrap();
     let version = db.schema_version().unwrap();
-    assert_eq!(version, 3);
+    assert_eq!(version, 4);
 }
 
 #[test]
