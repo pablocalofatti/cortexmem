@@ -1,8 +1,8 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
+about: Suggest an idea for cortexmem
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
@@ -15,6 +15,15 @@ A clear and concise description of what you want to happen.
 
 **Describe alternatives you've considered**
 A clear and concise description of any alternative solutions or features you've considered.
+
+**Which cortexmem component is this related to?**
+- [ ] CLI commands
+- [ ] MCP server / tools
+- [ ] HTTP API (`cortexmem serve`)
+- [ ] Storage / database
+- [ ] Search (vector / full-text)
+- [ ] Configuration
+- [ ] Other
 
 **Additional context**
 Add any other context or screenshots about the feature request here.
